@@ -78,112 +78,72 @@ static void draw_car_shadow(uint8_t *buf, int cx, int cy, int dx, int dy, bool r
             art_dither_pixel(buf, x, y, 0, 2); // 50% black over body color
 }
 
-static const char *countach_sprite[9] = {
-    "....WRRRRRW.........................", // dy = -4
-    ".....R...R....WRRRRRRRW.............", // dy = -3
-    "..RRRR........RBBBBBBBBCCW..........", // dy = -2
-    "..RKKKRRRRRRRRRBBBBBBBBCCRRRRRR.....", // dy = -1
-    ".RRRRRRRKKKRRRRRRRRRRRRRRRRRRRYYRR..", // dy = 0
-    ".RRRRKKKKKRRRRRRRRRRRRRRRRRKKKKKRRR.", // dy = 1
-    "RRRRKWWWKRRRRRRRRRRRRRRRRRKWWWKRRRR", // dy = 2
-    "KKKKKWWWWKKKKKKKKKKKKKKKKKKWWWWKKKK", // dy = 3
-    "..KKKKKKKKKKKKKKKKKKKKKKKKKKKKKKK..."  // dy = 4
-};
+static void draw_rear_countach(uint8_t *buf, int cx, int cy, int frame) {
+    // Left & Right Tires (Black 0)
+    draw_rect(buf, cx - 42, cy - 14, cx - 30, cy, 0);
+    draw_rect(buf, cx + 30, cy - 14, cx + 42, cy, 0);
 
-static void draw_lambo_countach(uint8_t *buf, int cx, int cy, int frame, bool right) {
-    int start_x = cx - 18 * CAR_SCALE;
-    int start_y = cy - 4 * CAR_SCALE;
-    
-    for (int r = 0; r < 9; r++) {
-        for (int c = 0; c < 36; c++) {
-            char color_char = countach_sprite[r][right ? c : (35 - c)];
-            if (color_char == '.') continue;
-            uint8_t color = 0;
-            switch (color_char) {
-                case 'K': color = 0; break;
-                case 'R': color = 1; break;
-                case 'G': color = 2; break;
-                case 'Y': color = 3; break;
-                case 'B': color = 4; break;
-                case 'M': color = 5; break;
-                case 'C': color = 6; break;
-                case 'W': color = 7; break;
-                default: continue;
-            }
-            int px = start_x + c * CAR_SCALE;
-            int py = start_y + r * CAR_SCALE;
-            draw_rect(buf, px, py, px + CAR_SCALE - 1, py + CAR_SCALE - 1, color);
-        }
+    // Rear bumper & diffusers (Dark Blue 4 / Black 0)
+    draw_rect(buf, cx - 38, cy - 6, cx + 38, cy, 4);
+    draw_rect(buf, cx - 35, cy - 4, cx + 35, cy, 0);
+
+    // Quad Exhaust Pipes (Silver 7 / Orange 3 glow)
+    draw_rect(buf, cx - 26, cy - 3, cx - 23, cy - 1, 7);
+    draw_rect(buf, cx - 21, cy - 3, cx - 18, cy - 1, 7);
+    draw_pixel(buf, cx - 25, cy - 2, 0);
+    draw_pixel(buf, cx - 20, cy - 2, 0);
+    draw_rect(buf, cx + 18, cy - 3, cx + 21, cy - 1, 7);
+    draw_rect(buf, cx + 23, cy - 3, cx + 26, cy - 1, 7);
+    draw_pixel(buf, cx + 20, cy - 2, 0);
+    draw_pixel(buf, cx + 25, cy - 2, 0);
+
+    // Main rear body wedge (Red 1 body dithered with Magenta 5)
+    for (int y = cy - 24; y <= cy - 6; y++) {
+        int w = 40 - (cy - 6 - y) * 2 / 5; // taper outwards to bottom
+        draw_rect(buf, cx - w, y, cx + w, y, 1);
+        // Shadow/dither edges
+        art_dither_pixel(buf, cx - w, y, 5, 2);
+        art_dither_pixel(buf, cx + w, y, 5, 2);
     }
 
-    // ── HEADLIGHT BEAM (screen-space) ─────────────────────────────────────────
-    int dir = right ? 1 : -1;
-    int lx_start = cx + dir * 16 * CAR_SCALE;
-    int beam_cy = cy + 1 * CAR_SCALE;
-    for (int d = 0; d < 50; d++) {
-        int bx = lx_start + dir * d;
-        int half = d / 5 * CAR_SCALE / 2 + 1;
-        // Core bright yellow
-        for (int yy = beam_cy - half; yy <= beam_cy + half; yy++) {
-            art_dither_pixel(buf, bx, yy, 3, 4 - d/15);
-        }
-    }
-}
-
-static const char *delorean_sprite[8] = {
-    ".......WWWWWWWW...................",
-    "......WBBBBBBBBCCW................",
-    "....WKKKKKKKKKKKKKKWWWW...........",
-    "..WWWWWWWWWWWWWWWWWWWWWWWWWWYY....",
-    ".WWWWWWKKKWWWWWWWWWWWWWKKKKKWWW...",
-    "WWWWWWKWWWKWWWWWWWWWWWKWWWKWWWW...",
-    ".KKKKKWWWWWKKKKKKKKKKKWWWWWKKKK...",
-    "..KKKKKKKKKKKKKKKKKKKKKKKKKKKK...."
-};
-
-static void draw_delorean(uint8_t *buf, int cx, int cy, int frame, bool right) {
-    int scale = 4;
-    int start_x = cx - 17 * scale;
-    int start_y = cy - 3 * scale;
-    
-    for (int r = 0; r < 8; r++) {
-        for (int c = 0; c < 34; c++) {
-            char color_char = delorean_sprite[r][right ? c : (33 - c)];
-            if (color_char == '.') continue;
-            uint8_t color = 0;
-            switch (color_char) {
-                case 'K': color = 0; break;
-                case 'R': color = 1; break;
-                case 'G': color = 2; break;
-                case 'Y': color = 3; break;
-                case 'B': color = 4; break;
-                case 'M': color = 5; break;
-                case 'C': color = 6; break;
-                case 'W': color = 7; break;
-                default: continue;
-            }
-            int px = start_x + c * scale;
-            int py = start_y + r * scale;
-            draw_rect(buf, px, py, px + scale - 1, py + scale - 1, color);
-        }
+    // Engine Cover Louvers (Black slots on the engine deck)
+    for (int y = cy - 22; y <= cy - 16; y += 2) {
+        draw_rect(buf, cx - 24, y, cx + 24, y, 0);
     }
 
-    // Headlight beam (cyan/white glow)
-    int dir = right ? 1 : -1;
-    int lx_start = cx + dir * 14 * scale;
-    int beam_cy = cy + 1 * scale;
-    for (int d = 0; d < 40; d++) {
-        int bx = lx_start + dir * d;
-        int half = d / 6 * scale / 2 + 1;
-        for (int yy = beam_cy - half; yy <= beam_cy + half; yy++) {
-            art_dither_pixel(buf, bx, yy, 6, 3 - d/15);
-        }
-    }
+    // Taillight assembly panel (Black 0 backing)
+    draw_rect(buf, cx - 35, cy - 14, cx + 35, cy - 8, 0);
+
+    // Glowing red taillights (red 1 with yellow 3 cores)
+    draw_rect(buf, cx - 32, cy - 13, cx - 16, cy - 9, 1);
+    draw_rect(buf, cx - 28, cy - 12, cx - 20, cy - 10, 3);
+    draw_rect(buf, cx + 16, cy - 13, cx + 32, cy - 9, 1);
+    draw_rect(buf, cx + 20, cy - 12, cx + 28, cy - 10, 3);
+
+    // License Plate (White 7)
+    draw_rect(buf, cx - 10, cy - 13, cx + 10, cy - 9, 7);
+    draw_string(buf, "COUNTACH", cx - 8, cy - 12, 1, 0); // black text
+
+    // Huge Rear Spoiler/Wing (Red 1)
+    draw_rect(buf, cx - 46, cy - 32, cx + 46, cy - 28, 1);
+    draw_rect(buf, cx - 47, cy - 34, cx - 45, cy - 22, 1);
+    draw_rect(buf, cx + 45, cy - 34, cx + 47, cy - 22, 1);
+    draw_rect(buf, cx - 20, cy - 28, cx - 18, cy - 24, 1);
+    draw_rect(buf, cx + 18, cy - 28, cx + 20, cy - 24, 1);
+
+    // Specular body sheen highlights (White 7 / Cyan 6)
+    draw_rect(buf, cx - 32, cy - 24, cx + 32, cy - 24, 6);
+    draw_pixel(buf, cx - 30, cy - 24, 7);
+    draw_pixel(buf, cx + 30, cy - 24, 7);
+
+    // Rear cockpit glass (Black 0 with cyan 6 highlights)
+    draw_rect(buf, cx - 18, cy - 32, cx + 18, cy - 26, 0);
+    draw_rect(buf, cx - 15, cy - 31, cx + 15, cy - 30, 6);
 }
 
 // ============================================================================
 //  STATE 1: Synthwave Sunset — ENHANCED
-//  New: multi-layer dithered sky, hex grid floor, scanline glow, car with beam
+//  New: multi-layer dithered sky, hex grid floor, scanline glow, rear-view car
 // ============================================================================
 void init_synthwave() {}
 
@@ -227,19 +187,17 @@ void play_synthwave(uint8_t *buf, int frame) {
     draw_circle(buf, sun_cx - 8, sun_cy - 14, 4, 7);
 
     // ── HORIZON GLOW ─────────────────────────────────────────────────────────
-    // 3 rows of glow above horizon
     draw_rect(buf, 0, 138, 319, 138, 7);
     draw_rect(buf, 0, 139, 319, 139, 5);
     draw_rect(buf, 0, 140, 319, 141, 5);
 
     // ── PERSPECTIVE GRID FLOOR ────────────────────────────────────────────────
     int horizon_y = 141;
-    int grid_scroll = (frame * 3) % 20;
+    int grid_scroll = (frame * 4) % 20;
 
     // Floor base color
     for (int y = horizon_y; y < 240; y++) {
         int dy = y - horizon_y;
-        // Dither between black and magenta based on distance from horizon
         int d = (dy * 15) / 99;
         for (int x = 0; x < 320; x++) {
             int t = art_bayer4_at(x, y);
@@ -267,58 +225,29 @@ void play_synthwave(uint8_t *buf, int frame) {
         }
     }
 
-    // ── PALM TREES (detailed silhouettes) ─────────────────────────────────────
-    // Left palm
-    for (int y = 141; y > 88; y--) {
-        float t = (141 - y) / 53.0f;
-        int tx = (int)(22 + 8 * t * t);
-        draw_rect(buf, tx - 2, y, tx + 2, y, 0);
-        // Texture stripe
-        if ((y + frame/4) % 8 < 2) draw_pixel(buf, tx, y, 5);
-    }
-    // Left fronds (fan of lines from tip)
-    for (int f = 0; f < 7; f++) {
-        int angle_x = -16 + f * 5;
-        int angle_y = -18 + (f < 4 ? f * 2 : (6 - f) * 2);
-        for (int s = 0; s <= 12; s++) {
-            int fx = 30 + (angle_x * s) / 12;
-            int fy = 88 + (angle_y * s) / 12;
-            draw_pixel(buf, fx, fy, 0);
-            draw_pixel(buf, fx + 1, fy, 0);
+
+    // ── PARALLAX SCROLLING 3D PALM TREES ──────────────────────────────────────
+    for (int side = 0; side < 2; side++) { // 0 = Left, 1 = Right
+        for (int i = 0; i < 3; i++) {
+            int t_frame = (frame * 2 + i * 80) % 240;
+            float t = t_frame / 240.0f;
+            int py = 141 + (int)(99 * t * t);
+            int px = 160 + (side == 0 ? -1 : 1) * (int)(155 * t);
+            int scale = (int)(t * 32.0f);
+            if (scale > 2) {
+                // Draw trunk (Black 0)
+                draw_rect(buf, px - scale/10 - 1, py - scale, px + scale/10 + 1, py, 0);
+                // Draw green fronds (Green 2 with black shadow inside)
+                draw_circle(buf, px, py - scale, scale/2, 2);
+                draw_circle(buf, px, py - scale, scale/4, 0);
+            }
         }
     }
 
-    // Right palm
-    for (int y = 141; y > 83; y--) {
-        float t = (141 - y) / 58.0f;
-        int tx = (int)(297 - 8 * t * t);
-        draw_rect(buf, tx - 2, y, tx + 2, y, 0);
-        if ((y + frame/4 + 4) % 8 < 2) draw_pixel(buf, tx, y, 5);
-    }
-    for (int f = 0; f < 7; f++) {
-        int angle_x = 16 - f * 5;
-        int angle_y = -22 + (f < 4 ? f * 2 : (6 - f) * 2);
-        for (int s = 0; s <= 12; s++) {
-            int fx = 290 + (angle_x * s) / 12;
-            int fy = 83 + (angle_y * s) / 12;
-            draw_pixel(buf, fx, fy, 0);
-            draw_pixel(buf, fx + 1, fy, 0);
-        }
-    }
-
-    // ── DELOREAN DMC-12 (Driving in far lane, faster to overtake) ─────────────
-    int delo_speed = 3;
-    int delo_wrap = 320 + 34 * 4;
-    int delo_x = (int)((long)frame * delo_speed % delo_wrap) - 17 * 4;
-    int delo_y = 195;
-    draw_delorean(buf, delo_x, delo_y, frame, true);
-
-    // ── LAMBORGINI COUNTACH (Driving in near lane) ──────────────────────────
-    int car_speed = 2;
-    int car_wrap = 320 + 30 * CAR_SCALE;
-    int car_x = (int)((long)frame * car_speed % car_wrap) - 15 * CAR_SCALE;
-    int car_y = 239 - 5 * CAR_SCALE;
-    draw_lambo_countach(buf, car_x, car_y, frame, true);
+    // ── REAR-VIEW LAMBORGHINI COUNTACH (Swaying/steering in center-foreground) ──
+    int car_cx = 160 + (int)(22.0f * sinf(frame * 0.04f));
+    int car_cy = 230;
+    draw_rear_countach(buf, car_cx, car_cy, frame);
 
     // ── MOON ─────────────────────────────────────────────────────────────────
     draw_circle(buf, 280, 28, 10, 7);

@@ -70,343 +70,190 @@ void init_deltarune() {
 }
 
 // ============================================================
-// KRIS - Dark World hero. Cyan armor, black hair, dark cape,
-//        and a trusty sword. ~32px tall, well-proportioned.
+//  DELTARUNE SPRITES (Authentic Dark World Art Matrices)
+//  0=Black  1=Red  2=Green  3=Yellow  4=Blue  5=Magenta  6=Cyan  7=White  .=Transparent
 // ============================================================
+
+static const char *kris_sprite[21] = {
+    ".....00000..........",
+    "....0000000.........",
+    "...000000000........",
+    "...000000000........",
+    "...006666600........", // cyan skin / face
+    "...066666660........",
+    "...000000000........",
+    "....0666660.........",
+    "....0055500.........", // pink scarf
+    "...055777550....7...", // sword tip
+    "..05577777550..77...",
+    "..05777777750.77....",
+    "..0577333775077.....",
+    "..055777775577......",
+    "...0555555577.......", // sword body
+    "....00000033........", // guard
+    "....00...000........", // hilt
+    "....06...600........",
+    "....06...60.........",
+    "....07...70.........",
+    "....00...00........."
+};
+
+static const char *susie_sprite[24] = {
+    "......00000000......",
+    ".....0555555550.....", // wild magenta hair
+    "....055555555550....",
+    "....055555555550....",
+    "....055555555550....",
+    "....055111111550....", // plum skin
+    "....051771177150....", // eyes
+    "....051111111150....",
+    "....051177771150....", // grin
+    ".....011111110......",
+    "......0000000.......",
+    ".....055000550......", // black vest
+    "....05550005550.....",
+    "....05550005550.....",
+    "....05550005550.....",
+    "....05553335550.....", // gold stud belt
+    ".....055555550......",
+    "......0333330.......", // yellow pants
+    "......033.330.......",
+    "......033.330.......",
+    "......033.330.......",
+    "......000.000.......", // heavy boots
+    "......000.000.......",
+    "......000.000......."
+};
+
+static const char *ralsei_sprite[27] = {
+    ".......020..........", // witch hat green
+    "......02220.........",
+    "......02220.........",
+    ".....0222220........",
+    ".....0222220........",
+    "....022222220.......",
+    "....022222220.......",
+    "....077777770.......", // white ribbon
+    "...00000000000......", // black brim
+    "..0000000000000.....",
+    "....000000000.......",
+    "...00077007700......", // round glasses
+    "..0007770777000.....",
+    "..0010070700100.....", // pink cheeks (1)
+    "...0000000000.......", // black fur
+    "....00000000........",
+    "....07777770........", // pink/white scarf
+    "...0777777770.......",
+    "..022222222220......", // green robes
+    ".02222000022220.....", // black print
+    "0222200000022220....",
+    "0222200000022220....",
+    "0222220000222220....",
+    "0222222222222220....",
+    "0222222222222220....",
+    "0022222222222200....",
+    ".00000000000000....."
+};
+
+static const char *spamton_sprite[28] = {
+    "......07770.........", // spiky hair white
+    "....077777770.......",
+    "...00077777000......",
+    "..0777777777770.....", // head outline
+    ".077777777777770....",
+    ".077555577333370....", // mismatched lenses
+    ".075777757377730....",
+    ".075777757377730....",
+    ".077555577333370....",
+    "..0777777777770.....",
+    "...07777777770......", // nose pointing out
+    "....00000000........",
+    "....07777770........", // smile
+    "....07070700........",
+    "....07777770........",
+    ".....000000.........",
+    "....00111100........", // red bow tie
+    "...0000000000.......", // black suit
+    "..000077770000......", // white undershirt
+    "..000077770000......",
+    "..000077770000......",
+    "..000000000000......",
+    "...0000000000.......",
+    "....000..000........", // skinny legs
+    "....000..000........",
+    "....000..000........",
+    "....000..000........",
+    "....070..070........"  // white shoe highlights
+};
+
+static void draw_sprite_matrix(uint8_t *buffer, int start_x, int start_y, const char **sprite, int rows, int cols) {
+    for (int r = 0; r < rows; r++) {
+        for (int c = 0; c < cols; c++) {
+            char color_char = sprite[r][c];
+            if (color_char == '.') continue;
+            uint8_t color = 0;
+            switch (color_char) {
+                case '0': color = 0; break;
+                case '1': color = 1; break;
+                case '2': color = 2; break;
+                case '3': color = 3; break;
+                case '4': color = 4; break;
+                case '5': color = 5; break;
+                case '6': color = 6; break;
+                case '7': color = 7; break;
+                default: continue;
+            }
+            // Draw upscaled 2x2 blocks
+            draw_rect(buffer, start_x + c * 2, start_y + r * 2, start_x + c * 2 + 1, start_y + r * 2 + 1, color);
+        }
+    }
+}
+
 static void draw_kris(uint8_t *buffer, int ox) {
     int px = 58 + ox;
     int py = 60;
-
-    // --- Black hair (wild, swept back) ---
-    draw_rect(buffer, px - 4, py - 18, px + 4, py - 16, 0);
-    draw_rect(buffer, px - 5, py - 15, px + 5, py - 14, 0);
-    draw_pixel(buffer, px - 5, py - 16, 0);
-    draw_pixel(buffer, px + 5, py - 16, 0);
-    // Hair spikes on top
-    draw_pixel(buffer, px - 3, py - 19, 0);
-    draw_pixel(buffer, px,     py - 20, 0);
-    draw_pixel(buffer, px + 3, py - 19, 0);
-
-    // --- Face (cyan skin, dark world look) ---
-    draw_rect(buffer, px - 3, py - 13, px + 3, py - 9, 6);
-    // Eyes: small dark dots
-    draw_pixel(buffer, px - 2, py - 12, 0);
-    draw_pixel(buffer, px + 2, py - 12, 0);
-    // Mouth: determined frown
-    draw_pixel(buffer, px - 1, py - 10, 0);
-    draw_pixel(buffer, px + 1, py - 10, 0);
-
-    // --- Cyan armor collar / neck ---
-    draw_rect(buffer, px - 2, py - 8, px + 2, py - 7, 6);
-
-    // --- Dark blue cape (wide, draping) ---
-    draw_rect(buffer, px - 7, py - 6, px + 7, py - 1, 4);
-    // Cape shading: cyan trim along top edge
-    draw_rect(buffer, px - 7, py - 6, px + 7, py - 6, 6);
-    // Cape bottom fans out
-    draw_rect(buffer, px - 8, py,     px + 8, py + 2, 4);
-
-    // --- Cyan armor breastplate ---
-    draw_rect(buffer, px - 5, py - 5, px + 5, py + 1, 6);
-    // Chest divider line
-    draw_rect(buffer, px,     py - 4, px,     py,     4);
-    // Shoulder pauldrons
-    draw_rect(buffer, px - 7, py - 5, px - 6, py - 3, 6);
-    draw_rect(buffer, px + 6, py - 5, px + 7, py - 3, 6);
-
-    // --- Belt ---
-    draw_rect(buffer, px - 4, py + 2, px + 4, py + 3, 3);
-    draw_pixel(buffer, px,     py + 2, 7); // belt buckle white
-
-    // --- Legs in dark armor ---
-    draw_rect(buffer, px - 4, py + 4, px - 1, py + 11, 4); // left leg
-    draw_rect(buffer, px + 1, py + 4, px + 4, py + 11, 4); // right leg
-    // Leg cyan trim
-    draw_rect(buffer, px - 4, py + 4, px - 1, py + 5, 6);
-    draw_rect(buffer, px + 1, py + 4, px + 4, py + 5, 6);
-    // Boots
-    draw_rect(buffer, px - 5, py + 12, px - 1, py + 14, 0);
-    draw_rect(buffer, px + 1, py + 12, px + 5, py + 14, 0);
-
-    // --- Sword (right side) ---
-    // Blade (white, angled upward)
-    draw_rect(buffer, px + 7, py - 9, px + 8, py - 1, 7);
-    draw_pixel(buffer, px + 8, py - 10, 7); // tip
-    // Crossguard (yellow)
-    draw_rect(buffer, px + 5, py - 2, px + 10, py - 1, 3);
-    // Handle
-    draw_rect(buffer, px + 7, py,     px + 8, py + 3, 6);
-
-    // Ultra HD specular + shadow passes
-    art_specular(buffer, px + 8, py - 10, 7);
-    art_specular(buffer, px - 2, py - 4, 7);
-    art_dither_pixel(buffer, px - 7, py + 1, 0, 2);
-    art_dither_pixel(buffer, px + 7, py + 1, 0, 2);
-    art_dither_pixel(buffer, px - 4, py + 11, 0, 2);
-    art_dither_pixel(buffer, px + 4, py + 11, 0, 2);
+    // Render matrix scaled by 2 (offset centers)
+    draw_sprite_matrix(buffer, px - 16, py - 20, kris_sprite, 21, 20);
 }
 
-// ============================================================
-// SUSIE - Rude, tough, big. Purple jacket, red-brown hair,
-//         fangs, and a huge axe. Tallest of the party.
-// ============================================================
 static void draw_susie(uint8_t *buffer, int ox) {
     int px = 47 + ox;
     int py = 115;
-
-    // --- Red-brown wild hair (big and jagged) ---
-    // Main hair mass
-    draw_rect(buffer, px - 6, py - 22, px + 6, py - 18, 1);
-    draw_rect(buffer, px - 7, py - 18, px + 7, py - 15, 1);
-    // Side spikes
-    draw_pixel(buffer, px - 8, py - 19, 1);
-    draw_pixel(buffer, px + 8, py - 19, 1);
-    draw_pixel(buffer, px - 7, py - 22, 1);
-    draw_pixel(buffer, px + 7, py - 22, 1);
-    // Top spikes
-    draw_pixel(buffer, px - 3, py - 23, 1);
-    draw_pixel(buffer, px,     py - 24, 1);
-    draw_pixel(buffer, px + 3, py - 23, 1);
-
-    // --- Purple face (big, rough) ---
-    draw_rect(buffer, px - 5, py - 14, px + 5, py - 7, 5);
-    // Eyes: big white with dark pupils (intimidating)
-    draw_rect(buffer, px - 4, py - 13, px - 2, py - 11, 7);
-    draw_rect(buffer, px + 2, py - 13, px + 4, py - 11, 7);
-    draw_pixel(buffer, px - 3, py - 12, 0); // pupils
-    draw_pixel(buffer, px + 3, py - 12, 0);
-    // Fangs (white teeth showing)
-    draw_pixel(buffer, px - 2, py - 8, 7);
-    draw_pixel(buffer, px,     py - 8, 7);
-    draw_pixel(buffer, px + 2, py - 8, 7);
-    // Fang points
-    draw_pixel(buffer, px - 2, py - 7, 7);
-    draw_pixel(buffer, px + 2, py - 7, 7);
-
-    // --- Thick neck ---
-    draw_rect(buffer, px - 2, py - 6, px + 2, py - 5, 5);
-
-    // --- Purple jacket (wide body) ---
-    draw_rect(buffer, px - 8, py - 4, px + 8, py + 7, 5);
-    // Black inner shirt / open jacket
-    draw_rect(buffer, px - 5, py - 3, px + 5, py + 6, 0);
-    // Jacket lapels
-    draw_rect(buffer, px - 7, py - 4, px - 5, py + 2, 5);
-    draw_rect(buffer, px + 5, py - 4, px + 7, py + 2, 5);
-    // Jacket collar
-    draw_rect(buffer, px - 3, py - 4, px + 3, py - 3, 5);
-
-    // --- Yellow-green trousers ---
-    draw_rect(buffer, px - 6, py + 8, px - 1, py + 18, 3);
-    draw_rect(buffer, px + 1, py + 8, px + 6, py + 18, 3);
-    // Belt line
-    draw_rect(buffer, px - 6, py + 8, px + 6, py + 9, 0);
-
-    // --- Heavy boots ---
-    draw_rect(buffer, px - 7, py + 19, px - 1, py + 22, 0);
-    draw_rect(buffer, px + 1, py + 19, px + 7, py + 22, 0);
-    // Boot heel
-    draw_pixel(buffer, px - 7, py + 22, 5);
-    draw_pixel(buffer, px + 7, py + 22, 5);
-
-    // --- Giant Axe (left side) ---
-    // Handle
-    draw_rect(buffer, px - 14, py - 18, px - 13, py + 5, 6);
-    // Axe head top
-    draw_rect(buffer, px - 20, py - 22, px - 12, py - 13, 5);
+    
+    // Draw axe handle/head overlays on top of the matrix
+    draw_rect(buffer, px - 14, py - 18, px - 13, py + 5, 6); // handle
+    draw_rect(buffer, px - 20, py - 22, px - 12, py - 13, 5); // head
     draw_rect(buffer, px - 19, py - 21, px - 13, py - 14, 7); // shine
-    // Blade edge (sharp cyan point)
     draw_pixel(buffer, px - 21, py - 20, 6);
     draw_pixel(buffer, px - 21, py - 16, 6);
-    // Axe bottom spike
     draw_rect(buffer, px - 16, py - 13, px - 13, py - 10, 5);
 
-    // Ultra HD axe gleam + jacket depth
-    art_specular(buffer, px - 19, py - 21, 7);
-    art_dither_pixel(buffer, px - 8, py - 3, 0, 2);
-    art_dither_pixel(buffer, px + 8, py - 3, 0, 2);
-    art_specular(buffer, px - 3, py - 12, 7);
-    art_dither_pixel(buffer, px - 7, py + 19, 0, 2);
-    art_dither_pixel(buffer, px + 7, py + 19, 0, 2);
+    draw_sprite_matrix(buffer, px - 18, py - 22, susie_sprite, 24, 20);
 }
 
-// ============================================================
-// RALSEI - Fluffy dark-world prince. Black fur, tall green
-//          witch hat, round glasses, flowing green robes.
-// ============================================================
 static void draw_ralsei(uint8_t *buffer, int ox) {
     int px = 58 + ox;
     int py = 160;
 
-    // --- Tall Witch Hat (green with dark brim) ---
-    // Hat tip
-    draw_pixel(buffer, px,     py - 28, 2);
-    draw_rect(buffer, px - 1, py - 27, px + 1, py - 25, 2);
-    // Hat mid
-    draw_rect(buffer, px - 2, py - 24, px + 2, py - 21, 2);
-    draw_rect(buffer, px - 3, py - 20, px + 3, py - 18, 2);
-    // Hat body
-    draw_rect(buffer, px - 4, py - 17, px + 4, py - 13, 2);
-    // Hat brim (wider, dark)
-    draw_rect(buffer, px - 7, py - 12, px + 7, py - 11, 0);
-    draw_rect(buffer, px - 6, py - 10, px + 6, py - 10, 0); // brim curve
-    // White hat band
-    draw_rect(buffer, px - 4, py - 13, px + 4, py - 13, 7);
-    // Green hat shine highlight
-    draw_pixel(buffer, px - 2, py - 22, 7);
-
-    // --- Black fluffy head ---
-    draw_circle(buffer, px, py - 6, 6, 0);
-    // Fluffy fur tufts (white tips)
-    draw_pixel(buffer, px - 6, py - 7, 7);
-    draw_pixel(buffer, px + 6, py - 7, 7);
-    draw_pixel(buffer, px - 5, py - 11, 7);
-    draw_pixel(buffer, px + 5, py - 11, 7);
-
-    // --- Round glasses (iconic detail) ---
-    // Left lens
-    draw_rect(buffer, px - 5, py - 8, px - 2, py - 5, 0); // black frame
-    draw_rect(buffer, px - 4, py - 7, px - 3, py - 6, 7); // white glass
-    // Right lens
-    draw_rect(buffer, px + 2, py - 8, px + 5, py - 5, 0); // black frame
-    draw_rect(buffer, px + 3, py - 7, px + 4, py - 6, 7); // white glass
-    // Bridge
-    draw_pixel(buffer, px - 1, py - 7, 0);
-    draw_pixel(buffer, px,     py - 7, 0);
-    draw_pixel(buffer, px + 1, py - 7, 0);
-
-    // --- Gentle mouth / blush ---
-    draw_pixel(buffer, px - 1, py - 3, 7); // smile
-    draw_pixel(buffer, px + 1, py - 3, 7);
-    draw_pixel(buffer, px - 3, py - 4, 1); // rosy blush cheeks
-    draw_pixel(buffer, px + 3, py - 4, 1);
-
-    // --- White scarf / collar ---
-    draw_rect(buffer, px - 5, py + 1, px + 5, py + 3, 7);
-    // Scarf drape
-    draw_rect(buffer, px - 3, py + 4, px - 1, py + 6, 7);
-
-    // --- Green robes (wide and flowing) ---
-    draw_rect(buffer, px - 7, py + 4, px + 7, py + 13, 2);
-    // Robe shading: dark inner fold
-    draw_rect(buffer, px - 1, py + 5, px + 1, py + 12, 0);
-    // Robe flare at bottom
-    draw_rect(buffer, px - 9, py + 14, px + 9, py + 17, 2);
-    // Hem highlight
-    draw_rect(buffer, px - 9, py + 17, px + 9, py + 17, 7);
-
-    // --- Tiny dark paws peeking out ---
-    draw_rect(buffer, px - 9, py + 9, px - 8, py + 11, 0);
-    draw_rect(buffer, px + 8, py + 9, px + 9, py + 11, 0);
-    // White claw tips
-    draw_pixel(buffer, px - 9, py + 12, 7);
-    draw_pixel(buffer, px + 9, py + 12, 7);
-
-    // --- Staff (right side, green orb) ---
+    // Draw staff overlays
     draw_rect(buffer, px + 11, py - 15, px + 12, py + 10, 6); // shaft
     draw_circle(buffer, px + 12, py - 16, 3, 2); // green orb
     draw_pixel(buffer, px + 11, py - 17, 7); // orb shine
 
-    // Ultra HD robe folds + fur highlights
-    art_dither_pixel(buffer, px - 7, py + 8, 0, 2);
-    art_dither_pixel(buffer, px + 7, py + 8, 0, 2);
-    art_dither_pixel(buffer, px - 8, py + 15, 2, 2);
-    art_dither_pixel(buffer, px + 8, py + 15, 2, 2);
-    art_specular(buffer, px - 4, py - 7, 7);
-    art_specular(buffer, px + 4, py - 7, 7);
+    draw_sprite_matrix(buffer, px - 18, py - 26, ralsei_sprite, 27, 20);
 }
 
-// ============================================================
-// SPAMTON G. SPAMTON - Unhinged salesman. White head, cracked
-//   smile, mismatched glasses, puppet strings, black tuxedo.
-// ============================================================
 static void draw_spamton(uint8_t *buffer) {
     int px = 248;
     int py = 108;
 
-    // --- Puppet strings (from top of screen) ---
+    // Draw puppet strings
     draw_rect(buffer, px - 5, 40, px - 5, py - 20, 7);
     draw_rect(buffer, px + 5, 40, px + 5, py - 20, 7);
     draw_rect(buffer, px - 12, 40, px - 12, py,    7);
     draw_rect(buffer, px + 12, 40, px + 12, py,    7);
 
-    // --- Spiky white hair on top ---
-    draw_pixel(buffer, px - 3, py - 22, 7);
-    draw_pixel(buffer, px,     py - 23, 7);
-    draw_pixel(buffer, px + 3, py - 22, 7);
-    draw_rect(buffer, px - 4, py - 21, px + 4, py - 19, 7);
-
-    // --- White round head ---
-    draw_circle(buffer, px, py - 12, 8, 7);
-    // Head shadow / depth on left edge
-    draw_rect(buffer, px - 8, py - 15, px - 7, py - 9, 6);
-
-    // --- Mismatched glasses (iconic) ---
-    // Left lens: pink (magenta) circle
-    draw_rect(buffer, px - 7, py - 16, px - 2, py - 11, 5);
-    draw_rect(buffer, px - 6, py - 15, px - 3, py - 12, 7); // white inner
-    draw_pixel(buffer, px - 5, py - 14, 5); // magenta pupil
-    // Right lens: yellow star shape (square for now)
-    draw_rect(buffer, px + 2, py - 16, px + 7, py - 11, 3);
-    draw_rect(buffer, px + 3, py - 15, px + 6, py - 12, 7); // white inner
-    draw_pixel(buffer, px + 5, py - 14, 3); // yellow pupil
-    // Glasses bridge
-    draw_rect(buffer, px - 1, py - 14, px + 1, py - 13, 0);
-
-    // --- Long white nose ---
-    draw_rect(buffer, px + 1, py - 10, px + 8, py - 9, 7);
-    draw_pixel(buffer, px + 9, py - 10, 6); // nose tip slightly cyan for shape
-
-    // --- Cracked wide grin ---
-    draw_rect(buffer, px - 5, py - 6, px + 5, py - 5, 0); // mouth outline
-    // Teeth (jagged white)
-    draw_pixel(buffer, px - 4, py - 5, 7);
-    draw_pixel(buffer, px - 2, py - 5, 7);
-    draw_pixel(buffer, px,     py - 5, 7);
-    draw_pixel(buffer, px + 2, py - 5, 7);
-    draw_pixel(buffer, px + 4, py - 5, 7);
-    // Cracked smile lines
-    draw_pixel(buffer, px - 5, py - 7, 0);
-    draw_pixel(buffer, px + 5, py - 7, 0);
-
-    // --- Black tuxedo body ---
-    draw_rect(buffer, px - 7, py - 3, px + 7, py + 14, 0);
-    // White tuxedo shirt V-neck
-    draw_rect(buffer, px - 3, py - 2, px + 3, py + 6, 7);
-    draw_pixel(buffer, px - 3, py - 2, 0);
-    draw_pixel(buffer, px + 3, py - 2, 0);
-    draw_rect(buffer, px - 1, py + 6, px + 1, py + 9, 7); // shirt tail
-    // Red bow tie
-    draw_rect(buffer, px - 3, py - 3, px - 1, py - 1, 1);
-    draw_rect(buffer, px + 1, py - 3, px + 3, py - 1, 1);
-    draw_pixel(buffer, px, py - 2, 1); // bow center
-    // Tuxedo lapels
-    draw_rect(buffer, px - 6, py - 3, px - 4, py + 3, 0);
-    draw_rect(buffer, px + 4, py - 3, px + 6, py + 3, 0);
-
-    // --- Skinny puppet arms ---
-    // Left arm (attached to string)
-    draw_rect(buffer, px - 12, py,     px - 8,  py + 1, 0);
-    draw_rect(buffer, px - 14, py + 1, px - 11, py + 5, 7); // white hand
-    // Right arm
-    draw_rect(buffer, px + 8,  py,     px + 12, py + 1, 0);
-    draw_rect(buffer, px + 11, py + 1, px + 14, py + 5, 7); // white hand
-
-    // --- Spindly legs ---
-    draw_rect(buffer, px - 5, py + 15, px - 2, py + 23, 0);
-    draw_rect(buffer, px + 2, py + 15, px + 5, py + 23, 0);
-    // Tiny feet
-    draw_rect(buffer, px - 6, py + 24, px - 1, py + 26, 0);
-    draw_rect(buffer, px + 1, py + 24, px + 6, py + 26, 0);
-    // White shoe shine
-    draw_pixel(buffer, px - 6, py + 24, 7);
-    draw_pixel(buffer, px + 1, py + 24, 7);
-
-    // Ultra HD head gleam + tuxedo depth
-    art_specular(buffer, px - 4, py - 14, 7);
-    art_specular(buffer, px + 5, py - 14, 3);
-    art_dither_pixel(buffer, px - 7, py + 5, 0, 2);
-    art_dither_pixel(buffer, px + 7, py + 5, 0, 2);
+    draw_sprite_matrix(buffer, px - 16, py - 24, spamton_sprite, 28, 20);
 }
 
 static void draw_soul(uint8_t *buffer, int x, int y) {
