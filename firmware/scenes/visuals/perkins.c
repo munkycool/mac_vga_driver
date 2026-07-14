@@ -110,6 +110,7 @@ void play_perkins(uint8_t *buf, int frame) {
     // 6. Bakery Case details inside windows
     draw_rect(buf, 55, 185, 75, 186, 0);
     draw_rect(buf, 55, 190, 75, 191, 0);
+    draw_pixel(buf, 56, 189, 7); // creampie
     draw_pixel(buf, 60, 184, 1); // red cherry pie
     draw_pixel(buf, 68, 184, 5); // berry pie
     draw_pixel(buf, 64, 189, 3); // lemon pie
