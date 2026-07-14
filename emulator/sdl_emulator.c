@@ -86,8 +86,12 @@ static uint32_t sdl_palette[8] = {
     0xFFFFFFFF  // 7: White
 };
 
-// Queue key characters matching the Pico input expectations in common.c
-static void handle_key_down(SDL_Keycode sym) {
+// Queue key characters matching the Pico input expectations in common.c.
+// is_repeat: true when SDL is auto-repeating a held key.
+static void handle_key_down(SDL_Keycode sym, bool is_repeat) {
+    // Skip auto-repeated events. On real hardware the serial terminal never
+    // auto-repeats, and repeat events cause skip to fire multiple times.
+    if (is_repeat) return;
     switch (sym) {
         case SDLK_w: case SDLK_UP:
             queue_char(27); queue_char('['); queue_char('A'); // Escape sequence for Up arrow
@@ -111,7 +115,12 @@ static void handle_key_down(SDL_Keycode sym) {
         case SDLK_x: case SDLK_c:
             queue_char('x');
             break;
-        case SDLK_q: case SDLK_ESCAPE:
+        case SDLK_q:
+            queue_char('q');
+            break;
+        case SDLK_ESCAPE:
+            // Escape = skip to next screensaver. Queue exactly one 'q' so
+            // decay_skip = 1 (fires once, not 8 times).
             queue_char('q');
             break;
         default:
@@ -150,7 +159,7 @@ void tight_loop_contents(void) {
             SDL_Quit();
             exit(0);
         } else if (event.type == SDL_KEYDOWN) {
-            handle_key_down(event.key.keysym.sym);
+            handle_key_down(event.key.keysym.sym, event.key.repeat != 0);
         }
     }
     
