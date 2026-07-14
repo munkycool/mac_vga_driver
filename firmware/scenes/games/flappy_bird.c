@@ -18,6 +18,61 @@ typedef struct {
     bool passed;
 } FB_Pipe;
 
+static uint8_t flappy_bird_pixel_color(char pixel) {
+    switch (pixel) {
+        case 'k': return 0;
+        case 'y': return 3;
+        case 'o': return 1;
+        case 'w': return 7;
+        case 'e': return 7;
+        case 'p': return 0;
+        case 'h': return 7;
+        default:  return 255;
+    }
+}
+
+static void draw_flappy_bird_sprite(uint8_t *buffer, int x, int y, const char *const *sprite) {
+    for (int row = 0; sprite[row] != NULL; row++) {
+        const char *line = sprite[row];
+        for (int col = 0; line[col] != '\0'; col++) {
+            uint8_t color = flappy_bird_pixel_color(line[col]);
+            if (color != 255) {
+                draw_pixel(buffer, x + col, y + row, color);
+            }
+        }
+    }
+}
+
+static const char *const FLAPPY_BIRD_WING_UP[] = {
+    "................",
+    "................",
+    ".....kkkk.......",
+    "...kkyyyyk......",
+    "..kyyhhyyyyk....",
+    ".kyyywwwyyyoo...",
+    ".kyyyywyyyyoo....",
+    "..kyyyyyyykk....",
+    "...kkyyyyk......",
+    ".....kkk........",
+    "................",
+    NULL
+};
+
+static const char *const FLAPPY_BIRD_WING_DOWN[] = {
+    "................",
+    "................",
+    ".....kkkk.......",
+    "...kkyyyyk......",
+    "..kyyhhyyyyk....",
+    ".kyyyyywyyyyoo..",
+    ".kyyywwwyyyyoo..",
+    "..kyyyyyyykk....",
+    "...kkyyyyk......",
+    ".....kkk........",
+    "................",
+    NULL
+};
+
 static int bird_y;     // 24.8 fixed point
 static int bird_vy;    // 24.8 fixed point
 static FB_Pipe pipes[2];
@@ -175,36 +230,10 @@ void play_flappy_bird(uint8_t *buffer, int frame_counter) {
         }
     }
 
-    // 4. Draw Flappy Bird (Yellow 3 body, Red 1 beak, White 7 wing)
-    draw_circle(buffer, BIRD_X, by_pixels, 6, 3);
-    art_circle_shaded(buffer, BIRD_X, by_pixels, 6, 1, 3);
-    art_specular(buffer, BIRD_X - 2, by_pixels - 3, 7);
-    // Eye
-    draw_pixel(buffer, BIRD_X + 2, by_pixels - 2, 7);
-    draw_pixel(buffer, BIRD_X + 3, by_pixels - 2, 0);
-    
-    // Dynamic Beak & Wing Animations based on vertical velocity
-    if (bird_vy < 0) {
-        // Beak pointing up
-        draw_rect(buffer, BIRD_X + 5, by_pixels - 2, BIRD_X + 8, by_pixels, 1);
-        // Wing flapping fast
-        int wing_state = (frame_counter / 3) % 2;
-        if (wing_state == 0) {
-            draw_rect(buffer, BIRD_X - 5, by_pixels - 2, BIRD_X - 1, by_pixels, 7);
-        } else {
-            draw_rect(buffer, BIRD_X - 5, by_pixels, BIRD_X - 1, by_pixels + 2, 7);
-        }
-    } else {
-        // Beak pointing down
-        draw_rect(buffer, BIRD_X + 5, by_pixels, BIRD_X + 8, by_pixels + 2, 1);
-        // Wing gliding / flapping slow
-        int wing_state = (frame_counter / 6) % 2;
-        if (wing_state == 0) {
-            draw_rect(buffer, BIRD_X - 5, by_pixels - 1, BIRD_X - 1, by_pixels + 1, 7);
-        } else {
-            draw_rect(buffer, BIRD_X - 5, by_pixels + 1, BIRD_X - 1, by_pixels + 3, 7);
-        }
-    }
+    // 4. Draw Flappy Bird with a cleaner pixel-art sprite
+    bool wing_up = (bird_vy < 0) ? ((frame_counter / 3) & 1) == 0 : ((frame_counter / 6) & 1) == 0;
+    const char *const *bird_sprite = wing_up ? FLAPPY_BIRD_WING_UP : FLAPPY_BIRD_WING_DOWN;
+    draw_flappy_bird_sprite(buffer, BIRD_X - 8, by_pixels - 6, bird_sprite);
 
     // Draw HUD Score
     draw_score(buffer, flappy_score, 10, 10, 2, 7);

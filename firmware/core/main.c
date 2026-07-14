@@ -266,16 +266,9 @@ int main() {
     
     dma_channel_start(dma_chan_a);
     
-    // Randomly show splash screen on boot (~1 in SPLASH_PROB chance)
-    enum ProgramState current_state;
-    if ((get_rand() % SPLASH_PROB) == 0) {
-        current_state = STATE_SPLASH;
-        init_screensaver(current_state);
-    } else {
-        current_state = pick_next_state((enum ProgramState)-1);
-        push_state_history(current_state);
-        init_screensaver(current_state);
-    }
+    // Force boot directly into Minecraft for testing
+    enum ProgramState current_state = STATE_MINECRAFT;
+    init_screensaver(current_state);
     
     int state_frame_counter = 0;
     const int TIMEOUT_FRAMES = 1334; // 1334 frames = Exactly 20.0 seconds at 66.7Hz [10]

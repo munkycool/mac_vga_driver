@@ -108,25 +108,25 @@ static const uint8_t TEXTURES[18][8][8] = {
     },
     // Grass Top (2)
     {
-        {2,2,2,3,2,2,2,2},
-        {2,2,3,3,2,2,2,3},
-        {2,3,2,2,2,2,3,3},
-        {3,2,2,2,2,3,2,2},
-        {2,2,2,2,3,2,2,2},
-        {2,2,2,3,3,2,2,2},
-        {2,2,3,2,2,2,2,3},
-        {2,3,2,2,2,2,3,2}
+        {2,2,2,3,2,2,2,3},
+        {2,2,3,2,2,2,3,2},
+        {2,3,2,2,3,2,2,2},
+        {3,2,2,3,2,2,2,3},
+        {2,2,3,2,2,3,2,2},
+        {2,3,2,2,2,2,3,2},
+        {2,2,2,3,2,2,2,3},
+        {3,2,2,2,3,2,2,2}
     },
     // Dirt (3)
     {
-        {2,1,2,2,1,2,0,2},
-        {1,2,1,0,2,1,2,1},
+        {2,1,2,2,1,2,3,2},
+        {1,2,1,3,2,1,2,1},
         {2,1,2,2,1,2,1,2},
-        {2,2,1,2,0,2,2,1},
-        {1,2,0,2,2,1,2,2},
+        {2,2,1,2,3,2,2,1},
+        {1,2,3,2,2,1,2,2},
         {2,1,2,1,2,2,1,2},
-        {2,2,1,2,1,2,2,0},
-        {0,2,2,1,2,0,2,2}
+        {2,2,1,2,1,2,2,3},
+        {3,2,2,1,2,3,2,2}
     },
     // Stone (4)
     {
@@ -174,14 +174,14 @@ static const uint8_t TEXTURES[18][8][8] = {
     },
     // Sand (8)
     {
-        {3,3,3,7,3,3,3,3},
-        {3,3,7,7,3,3,3,7},
-        {3,7,3,3,3,3,7,7},
-        {7,3,3,3,3,7,3,3},
-        {3,3,3,3,7,3,3,3},
-        {3,3,3,7,7,3,3,3},
-        {3,3,7,3,3,3,3,7},
-        {3,7,3,3,3,3,7,3}
+        {3,3,3,7,3,3,7,3},
+        {3,7,3,3,3,7,3,3},
+        {3,3,7,3,3,3,7,3},
+        {7,3,3,3,7,3,3,3},
+        {3,3,3,7,3,3,3,7},
+        {3,3,7,3,3,7,3,3},
+        {3,7,3,3,3,3,7,3},
+        {3,3,3,3,7,3,3,7}
     },
     // Glass (9)
     {
@@ -853,6 +853,9 @@ static void handle_input_and_ai(int frame_counter) {
             while (angle_diff < -256) angle_diff += 512;
             while (angle_diff > 256) angle_diff -= 512;
             int step = angle_diff / 5;
+            if (step == 0 && angle_diff != 0) {
+                step = (angle_diff > 0) ? 1 : -1;
+            }
             int max_step = 6;
             if (step > max_step) step = max_step;
             if (step < -max_step) step = -max_step;
@@ -861,9 +864,13 @@ static void handle_input_and_ai(int frame_counter) {
             // Smooth pitch lookup bobbing
             cam_pitch = (cam_pitch * 9 + -10) / 10;
 
-            // Move
-            player_vx += FP_MUL(cos_table[cam_angle], move_speed);
-            player_vy += FP_MUL(sin_table[cam_angle], move_speed);
+            // Only advance once the heading is close enough to the target.
+            // This prevents Steve from orbiting in circles around the waypoint.
+            if (angle_diff < 0) angle_diff = -angle_diff;
+            if (angle_diff < 24) {
+                player_vx += FP_MUL(cos_table[cam_angle], move_speed);
+                player_vy += FP_MUL(sin_table[cam_angle], move_speed);
+            }
         }
 
         // Auto-Jump when blocked
@@ -1191,11 +1198,12 @@ static uint8_t apply_lighting(uint8_t color, fixed_t dist, int hit_side, int col
     if (hit_side == 1) {
         if (color == 7) color = 7; // white remains white
         else if (color == 2) {
-            if ((col + y) % 2 == 0) color = 0; // dither down grass sides
+            color = ((col + y) % 2 == 0) ? 2 : 3; // keep grass bright without black fuzz
+        } else if (color == 3) {
+            color = ((col + y) % 2 == 0) ? 3 : 7; // keep sand speckled, not black
         } else {
             // Apply slight shadow
             if (color == 6) color = 4; // cyan to deep blue
-            else if (color == 3) color = 0; // yellow to dark
         }
     }
 
@@ -1313,7 +1321,8 @@ static void render_world(uint8_t *buffer) {
                                         int ty = (wy >> 13) & 7;
 
                                         uint8_t raw_color = TEXTURES[block_below][ty][tx];
-                                        if (raw_color != 0) {
+                                        bool is_trans = (block_below == BLOCK_LEAVES);
+                                        if (raw_color != 0 || !is_trans) {
                                             uint8_t light_col = apply_lighting(raw_color, d_pixel, 0, col, y, sky_color);
                                             draw_column(buffer, col, y, y, light_col);
                                             filled[y] = true;
@@ -1353,7 +1362,8 @@ static void render_world(uint8_t *buffer) {
                                 if (block == BLOCK_GRASS && ty >= 2) {
                                     raw_color = TEXTURES[BLOCK_DIRT][ty & 7][tx & 7];
                                 }
-                                if (raw_color != 0) {
+                                bool is_trans = (block == BLOCK_LEAVES);
+                                if (raw_color != 0 || !is_trans) {
                                     uint8_t light_col = apply_lighting(raw_color, corr_d_enter, hit_side, col, y, sky_color);
                                     draw_column(buffer, col, y, y, light_col);
                                     filled[y] = true;
@@ -1381,7 +1391,8 @@ static void render_world(uint8_t *buffer) {
                                     int ty = (wy >> 13) & 7;
 
                                     uint8_t raw_color = TEXTURES[block][ty][tx];
-                                    if (raw_color != 0) {
+                                    bool is_trans = (block == BLOCK_LEAVES);
+                                    if (raw_color != 0 || !is_trans) {
                                         uint8_t light_col = apply_lighting(raw_color, d_pixel, 0, col, y, sky_color);
                                         draw_column(buffer, col, y, y, light_col);
                                         filled[y] = true;

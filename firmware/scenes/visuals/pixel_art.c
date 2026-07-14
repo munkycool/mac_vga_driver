@@ -154,6 +154,72 @@ static void draw_rear_countach(uint8_t *buf, int cx, int cy, int frame) {
     draw_rect(buf, cx - 15, cy - 31, cx + 15, cy - 30, 6);
 }
 
+static void draw_art_line(uint8_t *buf, int x0, int y0, int x1, int y1, uint8_t col) {
+    int dx = x1 > x0 ? x1 - x0 : x0 - x1;
+    int sx = x0 < x1 ? 1 : -1;
+    int dy = y1 > y0 ? y0 - y1 : y1 - y0;
+    int sy = y0 < y1 ? 1 : -1;
+    int err = dx + dy;
+
+    while (1) {
+        draw_pixel(buf, x0, y0, col);
+        if (x0 == x1 && y0 == y1) break;
+        int e2 = err * 2;
+        if (e2 >= dy) {
+            err += dy;
+            x0 += sx;
+        }
+        if (e2 <= dx) {
+            err += dx;
+            y0 += sy;
+        }
+    }
+}
+
+static void draw_countach_palm(uint8_t *buf, int cx, int ground_y, int trunk_h,
+                               int crown_size, int sway, bool right_side) {
+    int lean_dir = right_side ? 1 : -1;
+    int trunk_w = trunk_h / 12 + 1;
+    int crown_y = ground_y - trunk_h;
+
+    for (int i = 0; i < trunk_h; i++) {
+        int y = ground_y - i;
+        int bend = (i * i * lean_dir) / (trunk_h * 7 + 1);
+        int wobble = ((sway + i) % 5) - 2;
+        int x = cx + bend + wobble / 2;
+
+        draw_rect(buf, x - trunk_w, y, x + trunk_w, y, 0);
+        if ((i & 1) == 0) {
+            draw_pixel(buf, x + trunk_w, y, 4);
+        }
+    }
+
+    int crown_cx = cx + (trunk_h * lean_dir) / 8;
+    int crown_r = crown_size / 2 + 2;
+    draw_circle(buf, crown_cx, crown_y, crown_r, 2);
+    draw_circle(buf, crown_cx, crown_y, crown_r / 2 + 1, 0);
+    draw_circle(buf, crown_cx - 1, crown_y - 1, 1, 7);
+
+    static const int frond_dx[6] = {-1, -2, 0, 2, 1, 0};
+    static const int frond_dy[6] = {-1, -1, -2, -1, 0, 1};
+    for (int f = 0; f < 6; f++) {
+        int sway_x = ((sway + f * 7) % 5) - 2;
+        int sway_y = ((sway + f * 5) % 3) - 1;
+        int len = crown_size + 4 + (f & 1);
+        int tip_x = crown_cx + frond_dx[f] * len + sway_x;
+        int tip_y = crown_y + frond_dy[f] * len + sway_y;
+
+        draw_art_line(buf, crown_cx, crown_y, tip_x, tip_y, 2);
+        draw_art_line(buf, crown_cx, crown_y, tip_x + lean_dir, tip_y, 6);
+        draw_pixel(buf, tip_x, tip_y, 7);
+
+        if (f == 0 || f == 3) {
+            draw_art_line(buf, tip_x, tip_y, tip_x + lean_dir * 2, tip_y - 1, 2);
+            draw_art_line(buf, tip_x, tip_y, tip_x + lean_dir * 2, tip_y + 1, 2);
+        }
+    }
+}
+
 // ============================================================================
 //  STATE 1: Synthwave Sunset — ENHANCED
 //  New: multi-layer dithered sky, hex grid floor, scanline glow, rear-view car
@@ -266,11 +332,10 @@ void play_synthwave(uint8_t *buf, int frame) {
             int px = 160 + (side == 0 ? -1 : 1) * (int)(155 * t);
             int scale = (int)(t * 32.0f);
             if (scale > 2) {
-                // Draw trunk (Black 0)
-                draw_rect(buf, px - scale/10 - 1, py - scale, px + scale/10 + 1, py, 0);
-                // Draw green fronds (Green 2 with black shadow inside)
-                draw_circle(buf, px, py - scale, scale/2, 2);
-                draw_circle(buf, px, py - scale, scale/4, 0);
+                int trunk_h = 10 + scale * 2 / 3;
+                int crown_size = 6 + scale / 3;
+                draw_countach_palm(buf, px, py, trunk_h, crown_size,
+                                   frame + i * 17 + side * 31, side == 1);
             }
         }
     }
