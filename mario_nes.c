@@ -3,9 +3,9 @@
 // --- Constants ---
 #define LEVEL_WIDTH     1000
 #define CAMERA_MAX      (LEVEL_WIDTH - 320)
-#define NUM_BLOCKS      6
+#define NUM_BLOCKS      20
 #define NUM_AIR_COINS   5
-#define NUM_GOOMBAS     3
+#define NUM_GOOMBAS     4
 
 // --- Structs ---
 typedef struct {
@@ -70,28 +70,47 @@ void init_mario_nes() {
     level_state = MARIO_PLAYING;
     level_end_timer = 0;
 
-    // Initialize Blocks
-    blocks[0] = (Block){180, 140, true, false};
-    blocks[1] = (Block){200, 140, false, false};
-    blocks[2] = (Block){220, 140, true, false};
-    blocks[3] = (Block){480, 130, false, false};
-    blocks[4] = (Block){500, 130, true, false};
-    blocks[5] = (Block){520, 130, false, false};
+    // Initialize Blocks (20 blocks matching NES 1-1 layout start)
+    // 1. Single Q-block
+    blocks[0] = (Block){160, 140, true, false};
+    // 2. Row of 5 blocks + 1 Q-block above
+    blocks[1] = (Block){360, 140, false, false}; // Brick
+    blocks[2] = (Block){376, 140, true, false};  // Q-block
+    blocks[3] = (Block){392, 140, false, false}; // Brick
+    blocks[4] = (Block){408, 140, true, false};  // Q-block
+    blocks[5] = (Block){424, 140, false, false}; // Brick
+    blocks[6] = (Block){392, 80, true, false};   // Q-block above
+    // 3. Row of 3 blocks
+    blocks[7] = (Block){510, 140, false, false}; // Brick
+    blocks[8] = (Block){526, 140, true, false};  // Q-block
+    blocks[9] = (Block){542, 140, false, false}; // Brick
+    // 4. Solid staircase pyramid before flagpole (10 blocks)
+    blocks[10] = (Block){780, 203, false, false}; // Col 1
+    blocks[11] = (Block){796, 203, false, false}; // Col 2
+    blocks[12] = (Block){796, 187, false, false};
+    blocks[13] = (Block){812, 203, false, false}; // Col 3
+    blocks[14] = (Block){812, 187, false, false};
+    blocks[15] = (Block){812, 171, false, false};
+    blocks[16] = (Block){828, 203, false, false}; // Col 4
+    blocks[17] = (Block){828, 187, false, false};
+    blocks[18] = (Block){828, 171, false, false};
+    blocks[19] = (Block){828, 155, false, false};
 
     // Initialize Air Coins
-    air_coins[0] = (AirCoin){300, 160, true};
-    air_coins[1] = (AirCoin){320, 150, true};
-    air_coins[2] = (AirCoin){340, 160, true};
+    air_coins[0] = (AirCoin){200, 160, true};
+    air_coins[1] = (AirCoin){220, 150, true};
+    air_coins[2] = (AirCoin){240, 160, true};
     air_coins[3] = (AirCoin){640, 150, true};
     air_coins[4] = (AirCoin){660, 150, true};
 
-    // Initialize Goombas
-    goombas[0] = (Goomba){320, 210, -1, true, 0};
-    goombas[1] = (Goomba){620, 210, -1, true, 0};
-    goombas[2] = (Goomba){760, 210, -1, true, 0};
+    // Initialize Goombas (4 Goombas at NES positions)
+    goombas[0] = (Goomba){220, 210, -1, true, 0};
+    goombas[1] = (Goomba){400, 210, -1, true, 0};
+    goombas[2] = (Goomba){640, 210, -1, true, 0};
+    goombas[3] = (Goomba){700, 210, -1, true, 0};
 
     // Initialize Koopa
-    koopa = (Koopa){540, 210, -1, KOOPA_WALK};
+    koopa = (Koopa){500, 210, -1, KOOPA_WALK};
 }
 
 // --- Sprites & Drawing Helpers ---
@@ -474,8 +493,8 @@ void play_mario_nes(uint8_t *buffer, int frame_counter) {
     }
 
     // Draw Green Pipes (using the Flappy Bird style)
-    int pipes_x[3] = {240, 410, 700};
-    int pipes_h[3] = {32, 48, 32};
+    int pipes_x[3] = {320, 460, 580};
+    int pipes_h[3] = {32, 48, 64};
     for (int i = 0; i < 3; i++) {
         int px = pipes_x[i] - camera_x;
         int py = 219 - pipes_h[i];
@@ -531,6 +550,15 @@ void play_mario_nes(uint8_t *buffer, int frame_counter) {
             if (mario_x < pipes_x[i] && mario_x + 8 >= pipes_x[i] - 10 && mario_y >= 218 - pipes_h[i]) {
                 // Obstructed! Back off and jump
                 mario_x = pipes_x[i] - 10 - 8;
+                need_jump = true;
+            }
+        }
+
+        // Block side obstruction check (so Mario jumps up staircase/blocks)
+        for (int i = 0; i < NUM_BLOCKS; i++) {
+            int bx = blocks[i].x;
+            int by = blocks[i].y;
+            if (mario_x < bx && mario_x + 8 >= bx - 3 && mario_y >= by - 4 && mario_y <= by + 16) {
                 need_jump = true;
             }
         }
