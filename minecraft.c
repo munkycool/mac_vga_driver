@@ -6,6 +6,15 @@
 #define WORLD_Y 32
 #define WORLD_Z 8
 
+#define BLOCK_AIR 0
+#define BLOCK_WATER 1
+#define BLOCK_GRASS 2
+#define BLOCK_LEAVES 3
+#define BLOCK_PLANK 4
+#define BLOCK_STONE 5
+#define BLOCK_DIRT 6
+#define BLOCK_WOOD 7
+
 static uint8_t world[WORLD_X][WORLD_Y][WORLD_Z];
 static float player_x = 16.0f;
 static float player_y = 16.0f;
@@ -31,6 +40,10 @@ static const char *chat_msg = "";
 
 // Cloud motion
 static float cloud_offset = 0.0f;
+
+// Inventory & Crafting System
+static int inv_items[8] = {0};
+static int current_tool = 0; // 0: Hand, 1: Wooden Pickaxe, 2: Stone Pickaxe, 3: Diamond Sword
 
 // Mob definition
 typedef struct {
@@ -122,6 +135,66 @@ static const uint8_t SWORD_SPRITE[16][16] = {
     {0,6,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
 };
 
+// Wooden Pickaxe Sprite (16x16)
+static const uint8_t WOOD_PICK_SPRITE[16][16] = {
+    {0,0,0,0,0,0,0,0,0,0,0,6,6,6,6,0},
+    {0,0,0,0,0,0,0,0,0,0,6,6,6,6,0,0},
+    {0,0,0,0,0,0,0,0,0,6,6,6,0,0,0,0},
+    {0,0,0,0,0,0,0,0,6,6,6,0,0,0,0,0},
+    {0,0,0,0,0,0,0,6,6,0,0,0,0,0,0,0},
+    {0,0,0,0,0,0,6,6,0,0,0,0,0,0,0,0},
+    {0,0,0,0,0,6,6,0,0,0,0,0,0,0,0,0},
+    {0,0,0,0,6,6,0,0,0,0,0,0,0,0,0,0},
+    {0,0,0,6,6,0,0,0,0,0,0,0,0,0,0,0},
+    {0,0,6,6,0,0,0,0,0,0,0,0,0,0,0,0},
+    {0,6,6,0,0,0,0,0,0,0,0,0,0,0,0,0},
+    {6,6,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+    {6,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+    {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+    {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+    {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
+};
+
+// Stone Pickaxe Sprite (16x16)
+static const uint8_t STONE_PICK_SPRITE[16][16] = {
+    {0,0,0,0,0,0,0,0,0,0,0,5,5,5,5,0},
+    {0,0,0,0,0,0,0,0,0,0,5,5,5,5,0,0},
+    {0,0,0,0,0,0,0,0,0,5,6,6,5,0,0,0},
+    {0,0,0,0,0,0,0,0,5,6,5,0,0,0,0,0},
+    {0,0,0,0,0,0,0,6,6,0,0,0,0,0,0,0},
+    {0,0,0,0,0,0,6,6,0,0,0,0,0,0,0,0},
+    {0,0,0,0,0,6,6,0,0,0,0,0,0,0,0,0},
+    {0,0,0,0,6,6,0,0,0,0,0,0,0,0,0,0},
+    {0,0,0,6,6,0,0,0,0,0,0,0,0,0,0,0},
+    {0,0,6,6,0,0,0,0,0,0,0,0,0,0,0,0},
+    {0,6,6,0,0,0,0,0,0,0,0,0,0,0,0,0},
+    {6,6,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+    {6,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+    {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+    {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+    {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
+};
+
+// Hand Sprite (16x16) for starting state
+static const uint8_t HAND_SPRITE[16][16] = {
+    {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+    {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+    {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+    {0,0,0,0,0,0,0,0,0,0,0,6,6,6,0,0},
+    {0,0,0,0,0,0,0,0,0,0,6,6,6,6,6,0},
+    {0,0,0,0,0,0,0,0,0,6,6,6,6,6,6,0},
+    {0,0,0,0,0,0,0,0,6,6,6,6,6,6,6,0},
+    {0,0,0,0,0,0,0,6,6,6,6,6,6,6,0,0},
+    {0,0,0,0,0,0,6,6,6,6,6,6,6,0,0,0},
+    {0,0,0,0,0,6,6,6,6,6,6,6,0,0,0,0},
+    {0,0,0,0,6,6,6,6,6,6,0,0,0,0,0,0},
+    {0,0,0,6,6,6,6,6,0,0,0,0,0,0,0,0},
+    {0,0,6,6,6,6,0,0,0,0,0,0,0,0,0,0},
+    {0,6,6,6,0,0,0,0,0,0,0,0,0,0,0,0},
+    {6,6,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+    {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
+};
+
 // Z-depth buffer for sprite occlusion
 static float z_depth[160];
 
@@ -138,6 +211,7 @@ static float get_terrain_height(float x, float y) {
     return 0.0f;
 }
 
+
 void init_minecraft() {
     time_of_day = 200;
     ambient_light = 0;
@@ -146,6 +220,12 @@ void init_minecraft() {
     chat_msg = "";
     glitch_timer = 0;
     
+    // Reset inventory & crafting tools
+    for (int i = 0; i < 8; i++) {
+        inv_items[i] = 0;
+    }
+    current_tool = 0; // Hand
+
     // Generate randomized terrain
     for (int x = 0; x < WORLD_X; x++) {
         for (int y = 0; y < WORLD_Y; y++) {
@@ -158,15 +238,15 @@ void init_minecraft() {
             
             for (int z = 0; z < WORLD_Z; z++) {
                 if (z < h - 2) {
-                    world[x][y][z] = 5; // Stone (white)
+                    world[x][y][z] = BLOCK_STONE; // Stone
                 } else if (z < h - 1) {
-                    world[x][y][z] = 6; // Dirt (brown)
+                    world[x][y][z] = BLOCK_DIRT; // Dirt
                 } else if (z < h) {
-                    world[x][y][z] = 2; // Grass (green)
+                    world[x][y][z] = BLOCK_GRASS; // Grass
                 } else if (z <= 2) {
-                    world[x][y][z] = 1; // Water (blue)
+                    world[x][y][z] = BLOCK_WATER; // Water
                 } else {
-                    world[x][y][z] = 0; // Air
+                    world[x][y][z] = BLOCK_AIR; // Air
                 }
             }
         }
@@ -177,10 +257,10 @@ void init_minecraft() {
         int tx = 2 + (get_rand() % (WORLD_X - 4));
         int ty = 2 + (get_rand() % (WORLD_Y - 4));
         int th = (int)get_terrain_height((float)tx, (float)ty);
-        if (th > 2 && world[tx][ty][th-1] == 2) { // Grass
+        if (th > 2 && world[tx][ty][th-1] == BLOCK_GRASS) { // Grass
             // Trunk
             for (int tz = th; tz < th + 3 && tz < WORLD_Z; tz++) {
-                world[tx][ty][tz] = 6; // Wood
+                world[tx][ty][tz] = BLOCK_WOOD; // Wood trunk
             }
             // Leaves
             for (int lx = tx - 2; lx <= tx + 2; lx++) {
@@ -188,7 +268,7 @@ void init_minecraft() {
                     for (int lz = th + 2; lz < th + 5 && lz < WORLD_Z; lz++) {
                         if (lx >= 0 && lx < WORLD_X && ly >= 0 && ly < WORLD_Y) {
                             if (lx == tx && ly == ty && lz < th + 4) continue; // Trunk
-                            world[lx][ly][lz] = 2; // Leaves (green)
+                            world[lx][ly][lz] = BLOCK_LEAVES; // Leaves
                         }
                     }
                 }
@@ -356,10 +436,39 @@ void play_minecraft(uint8_t *buffer, int frame_counter) {
         int by = (int)(player_y + sinf(cam_angle) * 1.5f);
         int bz = (int)(player_z - 0.5f);
         if (bx >= 0 && bx < WORLD_X && by >= 0 && by < WORLD_Y && bz >= 0 && bz < WORLD_Z) {
-            if (world[bx][by][bz] != 0 && world[bx][by][bz] != 1) {
-                world[bx][by][bz] = 0; // Break block
+            uint8_t bt = world[bx][by][bz];
+            if (bt != BLOCK_AIR && bt != BLOCK_WATER) {
+                world[bx][by][bz] = BLOCK_AIR; // Break block
+                if (bt < 8) inv_items[bt]++;
             }
         }
+    }
+    
+    // Auto-Crafting Logic
+    if (inv_items[BLOCK_WOOD] >= 3) {
+        inv_items[BLOCK_WOOD] -= 3;
+        inv_items[BLOCK_PLANK] += 12;
+        chat_timer = 90;
+        chat_msg = "[Crafted 12 Wood Planks]";
+    }
+    if (inv_items[BLOCK_PLANK] >= 4 && current_tool < 1) {
+        inv_items[BLOCK_PLANK] -= 4;
+        current_tool = 1;
+        chat_timer = 90;
+        chat_msg = "[Crafted Wooden Pickaxe]";
+    }
+    if (inv_items[BLOCK_STONE] >= 3 && inv_items[BLOCK_PLANK] >= 2 && current_tool < 2) {
+        inv_items[BLOCK_STONE] -= 3;
+        inv_items[BLOCK_PLANK] -= 2;
+        current_tool = 2;
+        chat_timer = 90;
+        chat_msg = "[Crafted Stone Pickaxe]";
+    }
+    if (inv_items[BLOCK_STONE] >= 6 && current_tool < 3) {
+        inv_items[BLOCK_STONE] -= 6;
+        current_tool = 3;
+        chat_timer = 90;
+        chat_msg = "[Crafted Diamond Sword]";
     }
     
     if ((get_rand() % 220) == 0) {
@@ -367,9 +476,19 @@ void play_minecraft(uint8_t *buffer, int frame_counter) {
         int by = (int)(player_y + sinf(cam_angle) * 2.0f);
         int bz = (int)(player_z - 1.0f);
         if (bx >= 0 && bx < WORLD_X && by >= 0 && by < WORLD_Y && bz >= 0 && bz < WORLD_Z) {
-            if (world[bx][by][bz] == 0) {
-                world[bx][by][bz] = 6; // Place dirt block
-                swing_timer = 10;
+            if (world[bx][by][bz] == BLOCK_AIR) {
+                if (inv_items[BLOCK_DIRT] > 0) {
+                    world[bx][by][bz] = BLOCK_DIRT; // Place dirt block
+                    inv_items[BLOCK_DIRT]--;
+                    swing_timer = 10;
+                } else if (inv_items[BLOCK_PLANK] > 0) {
+                    world[bx][by][bz] = BLOCK_PLANK; // Place plank block
+                    inv_items[BLOCK_PLANK]--;
+                    swing_timer = 10;
+                } else {
+                    world[bx][by][bz] = BLOCK_DIRT; // Default place dirt
+                    swing_timer = 10;
+                }
             }
         }
     }
@@ -635,12 +754,12 @@ void play_minecraft(uint8_t *buffer, int frame_counter) {
         }
     }
     
-    // --- 6. RENDER HELD DIAMOND SWORD (First Person) ---
-    // Weapon bobbing matching camera
+    // --- 6. RENDER HELD ITEM (First Person) ---
+    // bobbing matching camera
     float sword_bob_x = sinf(frame_counter * 0.15f) * 1.5f;
     float sword_bob_y = cosf(frame_counter * 0.3f) * 1.5f;
     
-    // Weapon swing rotation/motion offset
+    // swing rotation/motion offset
     float swing_x = 0.0f;
     float swing_y = 0.0f;
     if (swing_timer > 0) {
@@ -660,7 +779,12 @@ void play_minecraft(uint8_t *buffer, int frame_counter) {
             int screen_sy = sword_start_y + sy;
             if (screen_sy < 0 || screen_sy >= 120) continue;
             
-            uint8_t col_val = SWORD_SPRITE[sy][sx];
+            uint8_t col_val = 0;
+            if (current_tool == 0) col_val = HAND_SPRITE[sy][sx];
+            else if (current_tool == 1) col_val = WOOD_PICK_SPRITE[sy][sx];
+            else if (current_tool == 2) col_val = STONE_PICK_SPRITE[sy][sx];
+            else if (current_tool == 3) col_val = SWORD_SPRITE[sy][sx];
+            
             if (col_val != 0) {
                 // Overlay item in front of everything
                 draw_retro_column(buffer, screen_sx, screen_sy, screen_sy, col_val, 0);
@@ -668,9 +792,81 @@ void play_minecraft(uint8_t *buffer, int frame_counter) {
         }
     }
     
-    // --- 7. RENDER Spooky UI / HUD text overlays ---
+    // --- 7. RENDER MINECRAFT HUD HOTBAR ---
+    // Draw Hotbar base box (Gray background)
+    for (int hx = 44; hx < 116; hx++) {
+        draw_retro_column(buffer, hx, 110, 118, 0, 1); // Dark gray hotbar container
+    }
+    // Draw the 9 slots borders
+    for (int s = 0; s <= 9; s++) {
+        int sx = 44 + s * 8;
+        draw_retro_column(buffer, sx, 110, 118, 5, 0); // Slot border lines
+    }
+    // Draw top border line
+    for (int hx = 44; hx <= 116; hx++) {
+        draw_retro_column(buffer, hx, 110, 110, 5, 0);
+    }
+    
+    // Draw item icons inside slots
+    // Slot 0 (Dirt)
+    if (inv_items[BLOCK_DIRT] > 0) {
+        draw_retro_column(buffer, 47, 113, 115, 6, 0);
+        draw_retro_column(buffer, 48, 113, 115, 6, 0);
+    }
+    // Slot 1 (Grass)
+    if (inv_items[BLOCK_GRASS] > 0) {
+        draw_retro_column(buffer, 55, 113, 113, 2, 0);
+        draw_retro_column(buffer, 55, 114, 115, 6, 0);
+        draw_retro_column(buffer, 56, 113, 113, 2, 0);
+        draw_retro_column(buffer, 56, 114, 115, 6, 0);
+    }
+    // Slot 2 (Stone)
+    if (inv_items[BLOCK_STONE] > 0) {
+        draw_retro_column(buffer, 63, 113, 115, 5, 1);
+        draw_retro_column(buffer, 64, 113, 115, 5, 1);
+    }
+    // Slot 3 (Wood)
+    if (inv_items[BLOCK_WOOD] > 0) {
+        draw_retro_column(buffer, 71, 113, 115, 6, 2);
+        draw_retro_column(buffer, 72, 113, 115, 6, 2);
+    }
+    // Slot 4 (Planks)
+    if (inv_items[BLOCK_PLANK] > 0) {
+        draw_retro_column(buffer, 79, 113, 115, 6, 1);
+        draw_retro_column(buffer, 80, 113, 115, 6, 1);
+    }
+    // Slot 5 (Active Tool)
+    if (current_tool > 0) {
+        uint8_t tool_col = (current_tool == 1) ? 6 : ((current_tool == 2) ? 5 : 3);
+        draw_retro_column(buffer, 87, 113, 115, tool_col, 0);
+    }
+    
+    // --- 8. RENDER Spooky UI / HUD text overlays & Item Counts ---
     if (chat_timer > 0 && chat_msg[0] != '\0') {
         // Render Minecraft chat overlay
-        draw_string(buffer, chat_msg, 20, 200, 1, 7); // White text
+        draw_string(buffer, chat_msg, 20, 190, 1, 7); // White text
+    }
+    
+    // Draw slot counts in 320x240 coordinates
+    char cstr[16];
+    if (inv_items[BLOCK_DIRT] > 0) {
+        sprintf(cstr, "%d", inv_items[BLOCK_DIRT]);
+        draw_string(buffer, cstr, 98, 230, 1, 7);
+    }
+    if (inv_items[BLOCK_GRASS] > 0) {
+        sprintf(cstr, "%d", inv_items[BLOCK_GRASS]);
+        draw_string(buffer, cstr, 114, 230, 1, 7);
+    }
+    if (inv_items[BLOCK_STONE] > 0) {
+        sprintf(cstr, "%d", inv_items[BLOCK_STONE]);
+        draw_string(buffer, cstr, 130, 230, 1, 7);
+    }
+    if (inv_items[BLOCK_WOOD] > 0) {
+        sprintf(cstr, "%d", inv_items[BLOCK_WOOD]);
+        draw_string(buffer, cstr, 146, 230, 1, 7);
+    }
+    if (inv_items[BLOCK_PLANK] > 0) {
+        sprintf(cstr, "%d", inv_items[BLOCK_PLANK]);
+        draw_string(buffer, cstr, 162, 230, 1, 7);
     }
 }
