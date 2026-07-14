@@ -36,6 +36,7 @@ add_executable(mac_vga
     mario_show.c
     minecraft.c
     chan.c
+    revolution.c
     bad_apple.s
 )
 

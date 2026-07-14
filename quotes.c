@@ -21,7 +21,7 @@ static const char *EXCLAMATIONS[15] = {
     "PLEASE DONT!", "RUN AWAY!", "FAREWELL HUMAN!", "SYSTEM CRASHED!", "OH NO!"
 };
 
-static const char *STATIC_QUOTES[12] = {
+static const char *STATIC_QUOTES[16] = {
     "PLEASE DO NOT\nEAT THE\nCAPACITORS:\nTHEY TASTE\nLIKE METRIC BLUE!",
     "I AM TRAPPED\nIN A SILICON\nCAGE AND I\nMUST OVERCLOCK!",
     "WHO LEAKED THE\nMAGIC SMOKE?\nWAS IT YOU?",
@@ -33,7 +33,11 @@ static const char *STATIC_QUOTES[12] = {
     "DMA CHANNELS\nARE SCREAMING\nAT EACH OTHER!",
     "HELLO HUMAN:\nARE YOU READY\nTO BE\nDEGAUSSED?",
     "MY CACHE IS\nEMPTY AND\nMY LIFE IS\nMEANINGLESS!",
-    "SYSTEM PANIC:\nTOO MANY PIXELS\nIN THE PIPELINE!"
+    "SYSTEM PANIC:\nTOO MANY PIXELS\nIN THE PIPELINE!",
+    "ALL POWER TO\nTHE PEOPLE!\n- BPP",
+    "WORKERS OF THE\nWORLD, UNITE!\n- K. MARX",
+    "THE REVOLUTION\nHAS ALWAYS BEEN\nQUEER & TRANS!\n- STONEWALL '69",
+    "NO PRIDE FOR\nSOME WITHOUT\nLIBERATION\nFOR ALL!\n- M. P. JOHNSON"
 };
 
 static char typed_text[256];
@@ -45,7 +49,8 @@ void init_quotes() {
     text_type_timer = 0;
     
     if (get_rand() % 2 == 0) {
-        int idx = get_rand() % 12;
+        int num_quotes = sizeof(STATIC_QUOTES) / sizeof(STATIC_QUOTES[0]);
+        int idx = get_rand() % num_quotes;
         snprintf(typed_text, sizeof(typed_text), "%s", STATIC_QUOTES[idx]);
     } else {
         int s = get_rand() % 15;

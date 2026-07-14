@@ -84,6 +84,8 @@ void init_screensaver(enum ProgramState state) {
         init_minecraft();
     } else if (state == STATE_CHAN) {
         init_chan();
+    } else if (state == STATE_REVOLUTION) {
+        init_revolution();
     } else if (state == STATE_SPLASH) {
         init_splash();
     }
@@ -304,6 +306,8 @@ int main() {
             play_minecraft((uint8_t *)back_buffer, state_frame_counter);
         } else if (current_state == STATE_CHAN) {
             play_chan((uint8_t *)back_buffer, state_frame_counter);
+        } else if (current_state == STATE_REVOLUTION) {
+            play_revolution((uint8_t *)back_buffer, state_frame_counter);
         } else if (current_state == STATE_SPLASH) {
             play_splash((uint8_t *)back_buffer, state_frame_counter);
         }
