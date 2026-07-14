@@ -852,7 +852,11 @@ static void handle_input_and_ai(int frame_counter) {
             int angle_diff = dest_angle - cam_angle;
             while (angle_diff < -256) angle_diff += 512;
             while (angle_diff > 256) angle_diff -= 512;
-            cam_angle = (cam_angle + angle_diff / 5) & 511;
+            int step = angle_diff / 5;
+            int max_step = 6;
+            if (step > max_step) step = max_step;
+            if (step < -max_step) step = -max_step;
+            cam_angle = (cam_angle + step) & 511;
 
             // Smooth pitch lookup bobbing
             cam_pitch = (cam_pitch * 9 + -10) / 10;
@@ -981,7 +985,7 @@ static void update_physics() {
             on_ground = true;
             // Fall damage check
             if (player_vz < -TO_FP(0.24f) && !in_water) {
-                int damage = INT_VAL((-player_vz - TO_FP(0.24f)) * 40);
+                int damage = INT_VAL((-player_vz - TO_FP(0.24f)) * 25);
                 if (damage > 0) {
                     player_health -= damage;
                     screen_shake = 12;
@@ -993,6 +997,18 @@ static void update_physics() {
     } else {
         player_z = next_z;
         if (player_vz != 0) on_ground = false;
+    }
+
+    // Passive Health Regeneration (Out of combat)
+    static int regen_timer = 0;
+    if (player_health > 0 && player_health < 20) {
+        regen_timer++;
+        if (regen_timer >= 120) { // every 2 seconds
+            player_health++;
+            regen_timer = 0;
+        }
+    } else {
+        regen_timer = 0;
     }
 
     // Out of bounds check (falling into the void!)
@@ -1076,7 +1092,7 @@ static void update_mobs_and_particles() {
 
                         // Damage Steve
                         if (dist_sq < TO_FP(9.0f)) {
-                            player_health -= 12;
+                            player_health -= 6;
                         }
                     }
                 } else {
@@ -1092,7 +1108,7 @@ static void update_mobs_and_particles() {
                     spawn_particle(mobs[i].x, mobs[i].y, mobs[i].z + TO_FP(0.8f), 7);
                     add_chat("Skeleton shot arrow!");
                     if (dist_sq < TO_FP(64.0f) && (get_rand() % 3 == 0)) { // hit chance
-                        player_health -= 2;
+                        player_health -= 1;
                         screen_shake = 6;
                         add_chat("Steve shot by arrow!");
                     }
@@ -1110,11 +1126,11 @@ static void update_mobs_and_particles() {
             // Damage player on contact
             if (mobs[i].type != MOB_SKELETON && dist_sq < TO_FP(0.8f)) {
                 if (mobs[i].type == MOB_ZOMBIE && (get_rand() % 15 == 0)) {
-                    player_health -= 3;
+                    player_health -= 2;
                     screen_shake = 8;
                     add_chat("Steve bit by Zombie!");
                 } else if (mobs[i].type == MOB_SPIDER && (get_rand() % 15 == 0)) {
-                    player_health -= 2;
+                    player_health -= 1;
                     screen_shake = 6;
                     add_chat("Spider stung Steve!");
                 } else if (mobs[i].type == MOB_SLIME && (get_rand() % 20 == 0)) {
@@ -1314,9 +1330,11 @@ static void render_world(uint8_t *buffer) {
                     fixed_t z_bottom = (z << 16) - cam_z;
                     fixed_t z_top = ((z + 1) << 16) - cam_z;
 
-                    int y_top = y_center - INT_VAL(FP_DIV(FP_MUL(z_top, scale_y), corr_d_enter));
-                    int y_bottom = y_center - INT_VAL(FP_DIV(FP_MUL(z_bottom, scale_y), corr_d_enter));
+                    int y_top_orig = y_center - INT_VAL(FP_DIV(FP_MUL(z_top, scale_y), corr_d_enter));
+                    int y_bottom_orig = y_center - INT_VAL(FP_DIV(FP_MUL(z_bottom, scale_y), corr_d_enter));
 
+                    int y_top = y_top_orig;
+                    int y_bottom = y_bottom_orig;
                     if (y_top < 0) y_top = 0;
                     if (y_bottom >= 240) y_bottom = 239;
 
@@ -1324,9 +1342,12 @@ static void render_world(uint8_t *buffer) {
                         fixed_t wall_hit = (hit_side == 0) ? (player_y + FP_MUL(ray_sin, corr_d_enter)) : (player_x + FP_MUL(ray_cos, corr_d_enter));
                         int tx = (wall_hit >> 13) & 7;
 
+                        int dy_orig = y_bottom_orig - y_top_orig + 1;
+                        if (dy_orig <= 0) dy_orig = 1;
+
                         for (int y = y_top; y <= y_bottom; y++) {
                             if (!filled[y]) {
-                                int ty = ((y - y_top) * 8) / (y_bottom - y_top + 1);
+                                int ty = ((y - y_top_orig) * 8) / dy_orig;
                                 uint8_t raw_color = TEXTURES[block][ty & 7][tx & 7];
                                 // Grass side texture styling
                                 if (block == BLOCK_GRASS && ty >= 2) {
@@ -1491,16 +1512,22 @@ static void render_billboards(uint8_t *buffer) {
         int mob_res_w = (mobs[i].type == MOB_SPIDER) ? 16 : ((mobs[i].type == MOB_PIG || mobs[i].type == MOB_SHEEP || mobs[i].type == MOB_COW) ? 12 : 8);
         int mob_res_h = (mobs[i].type == MOB_ENDERMAN) ? 24 : ((mobs[i].type == MOB_SPIDER || mobs[i].type == MOB_PIG || mobs[i].type == MOB_SHEEP || mobs[i].type == MOB_COW || mobs[i].type == MOB_CHICKEN) ? 8 : 16);
 
-        for (int sx = start_x; sx <= end_x; sx++) {
-            if (sx < 0 || sx >= 320) continue;
-            
+        int start_x_clamped = start_x;
+        int end_x_clamped = end_x;
+        if (start_x_clamped < 0) start_x_clamped = 0;
+        if (end_x_clamped >= 320) end_x_clamped = 319;
+
+        int start_y_clamped = screen_y_top;
+        int end_y_clamped = screen_y_bottom;
+        if (start_y_clamped < 0) start_y_clamped = 0;
+        if (end_y_clamped >= 240) end_y_clamped = 239;
+
+        for (int sx = start_x_clamped; sx <= end_x_clamped; sx++) {
             // Basic billboard column DDA occlusion check: 
             int spr_col = ((sx - start_x) * mob_res_w) / mob_w;
             if (spr_col < 0 || spr_col >= mob_res_w) continue;
 
-            for (int sy = screen_y_top; sy <= screen_y_bottom; sy++) {
-                if (sy < 0 || sy >= 240) continue;
-
+            for (int sy = start_y_clamped; sy <= end_y_clamped; sy++) {
                 int spr_row = ((sy - screen_y_top) * mob_res_h) / mob_h;
                 if (spr_row < 0 || spr_row >= mob_res_h) continue;
 
