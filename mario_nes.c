@@ -94,6 +94,357 @@ void init_mario_nes() {
     koopa = (Koopa){540, 210, -1, KOOPA_WALK};
 }
 
+// --- Sprites & Drawing Helpers ---
+
+static const char *mario_walk_0[16] = {
+    "....RRRRR...",
+    "....RRRRRRR.",
+    "....MMMYYKY.",
+    "....MYMKKYY.",
+    "....MYMMYYY.",
+    "....MMYYYY..",
+    ".....YYYY...",
+    "....RRBRR...",
+    "...RRRBRRR..",
+    "..RRRRBBRRR.",
+    "..YYRBYBRYY.",
+    "..YYBBBBBYY.",
+    "..YYBBBBBYY.",
+    "...BBB.BBB..",
+    "..MMM...MMM.",
+    ".MMMM...MMMM"
+};
+
+static const char *mario_walk_1[16] = {
+    "....RRRRR...",
+    "....RRRRRRR.",
+    "....MMMYYKY.",
+    "....MYMKKYY.",
+    "....MYMMYYY.",
+    "....MMYYYY..",
+    ".....YYYY...",
+    "....RBBBR...",
+    "...RRBBBRR..",
+    "..RRRBBBBRR.",
+    "..YYBBBBBYY.",
+    "..YYBBBBBYY.",
+    "...BBBBBBB..",
+    "...BBB.BBB..",
+    "..MMM...MMM.",
+    ".MMMM....MMM"
+};
+
+static const char *mario_walk_2[16] = {
+    "....RRRRR...",
+    "....RRRRRRR.",
+    "....MMMYYKY.",
+    "....MYMKKYY.",
+    "....MYMMYYY.",
+    "....MMYYYY..",
+    ".....YYYY...",
+    "....RRBRR...",
+    "...RRRBRRR..",
+    "..RRRRBBRRR.",
+    "..YYRBYBRYY.",
+    "..YYBBBBBYY.",
+    "..YYBBBBBYY.",
+    "...BBB.BBB..",
+    "...MMM..MMM.",
+    "...MMM...MMM"
+};
+
+static const char *mario_jump[16] = {
+    ".....RRRRR..",
+    "....RRRRRRRR",
+    "....MMMYYMY.",
+    "....MYMYYYY.",
+    "....MYMMYYMY",
+    "....MMYYYY..",
+    ".....YYYY...",
+    "....RBBBR...",
+    "...RRRBBBR..",
+    "..RRRRBBBRR.",
+    "..YYRBBBYYY.",
+    "...YBBBBBY..",
+    "....BBBBB...",
+    "....BBB.BB..",
+    "....MM...M..",
+    "....M......."
+};
+
+static const char *mario_slide[16] = {
+    "....RRRRR...",
+    "....RRRRRRR.",
+    "....MMMYYKY.",
+    "....MYMKKYY.",
+    "....MYMMYYY.",
+    "....MMYYYY..",
+    ".....YYYY...",
+    "....RRBRR...",
+    "....RRBRR...",
+    "....RRBBR...",
+    "....RBBB....",
+    "....BBBB....",
+    "....BBBB....",
+    "....BBB.....",
+    "....MMM.....",
+    "....MMM....."
+};
+
+static const char *goomba_walk_0[16] = {
+    "......MMMM......",
+    "....MMMMMMMM....",
+    "...MMMMMMMMMM...",
+    "..MMKKMMMMKKMM..",
+    "..MKKKKMMKKKKM..",
+    "..MKKWKKKKWKKM..",
+    "..MKWWKKKKWWKM..",
+    "..MMWWKKKKWWMM..",
+    "...MMKKKKKKMM...",
+    "....MMMMMMMM....",
+    ".....MMMMMM.....",
+    "....MMMMMMMM....",
+    "...MMMMMMMMMM...",
+    "..KKKMMMMMMKKK..",
+    ".KKKKMMMMMMKKKK.",
+    ".KKK........KKK."
+};
+
+static const char *goomba_walk_1[16] = {
+    "......MMMM......",
+    "....MMMMMMMM....",
+    "...MMMMMMMMMM...",
+    "..MMKKMMMMKKMM..",
+    "..MKKKKMMKKKKM..",
+    "..MKKWKKKKWKKM..",
+    "..MKWWKKKKWWKM..",
+    "..MMWWKKKKWWMM..",
+    "...MMKKKKKKMM...",
+    "....MMMMMMMM....",
+    ".....MMMMMM.....",
+    "....MMMMMMMM....",
+    "...MMMMMMMMMM...",
+    "..KKKMMMMMMKKK..",
+    "..KKKMMMMMMKKK..",
+    "....KKK..KKK...."
+};
+
+static const char *goomba_squished[16] = {
+    "................",
+    "................",
+    "................",
+    "................",
+    "................",
+    "................",
+    "................",
+    "................",
+    "................",
+    "....MMMMMMMM....",
+    "..MMMMMMMMMMMM..",
+    ".MMKKMMMMMMKKMM.",
+    "MKKKKKKKKKKKKKKM",
+    "MKKWKKKKKKKKWKKM",
+    "MKWWKKKKKKKKWWKM",
+    "KKKKKKKKKKKKKKKK"
+};
+
+static const char *koopa_walk_0[24] = {
+    "......YYYY......",
+    "....YYYYYYYY....",
+    "...YYWWYYWWYY...",
+    "..YYWKKYYWKKYY..",
+    "..YYKKKKKKKKYY..",
+    "...YYYYYYYYYY...",
+    "....YYYYYYYY....",
+    "....YYYYYYYY....",
+    "...GGGGGGGGGG...",
+    "..GGGGGGGGGGGG..",
+    ".GGGGWWWWWWGGGG.",
+    ".GGGWWWWWWWWGGG.",
+    ".GGWWWWWWWWWWGG.",
+    "..GWWWWWWWWWWG..",
+    "...WWWWWWWWWW...",
+    "....GGGGGGGG....",
+    "....GGGGGGGG....",
+    "....GGGGGGGG....",
+    "....YY....YY....",
+    "....YY....YY....",
+    "....YY....YY....",
+    "....YY....YY....",
+    "...YYY....YYY...",
+    "..YYYY....YYYY.."
+};
+
+static const char *koopa_walk_1[24] = {
+    "......YYYY......",
+    "....YYYYYYYY....",
+    "...YYWWYYWWYY...",
+    "..YYWKKYYWKKYY..",
+    "..YYKKKKKKKKYY..",
+    "...YYYYYYYYYY...",
+    "....YYYYYYYY....",
+    "....YYYYYYYY....",
+    "...GGGGGGGGGG...",
+    "..GGGGGGGGGGGG..",
+    ".GGGGWWWWWWGGGG.",
+    ".GGGWWWWWWWWGGG.",
+    ".GGWWWWWWWWWWGG.",
+    "..GWWWWWWWWWWG..",
+    "...WWWWWWWWWW...",
+    "....GGGGGGGG....",
+    "....GGGGGGGG....",
+    "....GGGGGGGG....",
+    ".....YY..YY.....",
+    ".....YY..YY.....",
+    ".....YY..YY.....",
+    "....YY....YY....",
+    "...YYY....YYY...",
+    "..YYY......YYY.."
+};
+
+static const char *koopa_shell[16] = {
+    "......GGGG......",
+    "....GGGGGGGG....",
+    "...GGGGGGGGGG...",
+    "..GGGGGGGGGGGG..",
+    ".GGGGWWWWWWGGGG.",
+    ".GGGWWWWWWWWGGG.",
+    ".GGWWWWWWWWWWGG.",
+    "..GWWWWWWWWWWG..",
+    "...WWWWWWWWWW...",
+    "....GGGGGGGG....",
+    "....GGGGGGGG....",
+    ".....GGGGGG.....",
+    "......GGGG......",
+    "................",
+    "................",
+    "................"
+};
+
+static void draw_nes_sprite(uint8_t *buffer, int x_center, int y_bottom, const char *sprite[], int width, int height, bool flipped) {
+    int start_x = x_center - width / 2;
+    int start_y = y_bottom - height;
+    for (int r = 0; r < height; r++) {
+        for (int c = 0; c < width; c++) {
+            int col_idx = flipped ? (width - 1 - c) : c;
+            char color_char = sprite[r][col_idx];
+            if (color_char == '.') continue;
+            uint8_t color = 0;
+            switch (color_char) {
+                case 'K': color = 0; break;
+                case 'R': color = 1; break;
+                case 'G': color = 2; break;
+                case 'Y': color = 3; break;
+                case 'B': color = 4; break;
+                case 'M': color = 5; break;
+                case 'C': color = 6; break;
+                case 'W': color = 7; break;
+                default: continue;
+            }
+            draw_pixel(buffer, start_x + c, start_y + r, color);
+        }
+    }
+}
+
+static void draw_brick_block(uint8_t *buffer, int x, int y) {
+    draw_rect(buffer, x, y, x + 15, y + 15, 5); // Brown
+    draw_rect(buffer, x, y, x + 15, y, 0);
+    draw_rect(buffer, x, y + 4, x + 15, y + 4, 0);
+    draw_rect(buffer, x, y + 8, x + 15, y + 8, 0);
+    draw_rect(buffer, x, y + 12, x + 15, y + 12, 0);
+    
+    draw_rect(buffer, x, y, x, y + 4, 0);
+    draw_rect(buffer, x + 8, y, x + 8, y + 4, 0);
+    draw_rect(buffer, x + 4, y + 4, x + 4, y + 8, 0);
+    draw_rect(buffer, x + 12, y + 4, x + 12, y + 8, 0);
+    draw_rect(buffer, x, y + 8, x, y + 12, 0);
+    draw_rect(buffer, x + 8, y + 8, x + 8, y + 12, 0);
+    draw_rect(buffer, x + 4, y + 12, x + 4, y + 15, 0);
+    draw_rect(buffer, x + 12, y + 12, x + 12, y + 15, 0);
+
+    for (int by = 0; by < 16; by += 4) {
+        int shift = (by == 4 || by == 12) ? 4 : 0;
+        draw_pixel(buffer, x + 1 + shift, y + by + 1, 3);
+        draw_pixel(buffer, x + 2 + shift, y + by + 1, 3);
+        draw_pixel(buffer, x + 9 - shift, y + by + 1, 3);
+        draw_pixel(buffer, x + 10 - shift, y + by + 1, 3);
+    }
+}
+
+static void draw_q_block(uint8_t *buffer, int x, int y, int frame) {
+    draw_rect(buffer, x, y, x + 15, y + 15, 3); // Yellow
+    draw_rect(buffer, x, y, x + 15, y, 7);      // White highlights
+    draw_rect(buffer, x, y, x, y + 15, 7);
+    draw_rect(buffer, x + 15, y, x + 15, y + 15, 0);
+    draw_rect(buffer, x, y + 15, x + 15, y + 15, 0);
+    
+    draw_pixel(buffer, x + 1, y + 1, 0);
+    draw_pixel(buffer, x + 14, y + 1, 0);
+    draw_pixel(buffer, x + 1, y + 14, 0);
+    draw_pixel(buffer, x + 14, y + 14, 0);
+    
+    // Draw '?'
+    draw_rect(buffer, x + 5, y + 3, x + 10, y + 3, 0);
+    draw_rect(buffer, x + 10, y + 4, x + 10, y + 6, 0);
+    draw_rect(buffer, x + 7, y + 7, x + 9, y + 8, 0);
+    draw_rect(buffer, x + 7, y + 9, x + 8, y + 10, 0);
+    draw_rect(buffer, x + 7, y + 12, x + 8, y + 13, 0);
+}
+
+static void draw_hit_block(uint8_t *buffer, int x, int y) {
+    draw_rect(buffer, x, y, x + 15, y + 15, 5); // Brown
+    draw_rect(buffer, x, y, x + 15, y, 0);
+    draw_rect(buffer, x, y + 15, x + 15, y + 15, 0);
+    draw_rect(buffer, x, y, x, y + 15, 0);
+    draw_rect(buffer, x + 15, y, x + 15, y + 15, 0);
+    draw_rect(buffer, x + 2, y + 2, x + 13, y + 13, 0);
+    draw_rect(buffer, x + 3, y + 3, x + 12, y + 12, 5);
+    draw_pixel(buffer, x + 1, y + 1, 0);
+    draw_pixel(buffer, x + 14, y + 1, 0);
+    draw_pixel(buffer, x + 1, y + 14, 0);
+    draw_pixel(buffer, x + 14, y + 14, 0);
+}
+
+static void draw_ground_block(uint8_t *buffer, int x, int y) {
+    draw_rect(buffer, x, y, x + 15, y + 15, 5); // Brown base
+    draw_rect(buffer, x, y, x + 15, y, 0);      // Black borders
+    draw_rect(buffer, x, y, x, y + 15, 0);
+    draw_rect(buffer, x + 15, y, x + 15, y + 15, 0);
+    draw_rect(buffer, x, y + 15, x + 15, y + 15, 0);
+    
+    draw_rect(buffer, x + 1, y + 1, x + 14, y + 1, 3); // Yellow highlight
+    draw_rect(buffer, x + 1, y + 1, x + 1, y + 14, 3);
+    
+    draw_rect(buffer, x + 2, y + 14, x + 14, y + 14, 0);
+    draw_rect(buffer, x + 14, y + 2, x + 14, y + 14, 0);
+    
+    draw_pixel(buffer, x + 4, y + 4, 0);
+    draw_pixel(buffer, x + 5, y + 4, 0);
+    draw_pixel(buffer, x + 5, y + 5, 0);
+    draw_pixel(buffer, x + 10, y + 9, 0);
+    draw_pixel(buffer, x + 11, y + 9, 0);
+    draw_pixel(buffer, x + 11, y + 10, 0);
+}
+
+static void draw_nes_cloud(uint8_t *buffer, int x, int y) {
+    draw_rect(buffer, x + 8, y, x + 24, y + 15, 7);
+    draw_rect(buffer, x, y + 6, x + 31, y + 15, 7);
+    draw_rect(buffer, x + 4, y + 3, x + 28, y + 15, 7);
+    draw_rect(buffer, x + 4, y + 15, x + 28, y + 16, 6);
+    draw_rect(buffer, x + 8, y + 16, x + 24, y + 17, 6);
+}
+
+static void draw_castle_brick(uint8_t *buffer, int x, int y, int w, int h) {
+    draw_rect(buffer, x, y, x + w, y + h, 1); // Dark red
+    for (int cy = y; cy <= y + h; cy += 4) {
+        draw_rect(buffer, x, cy, x + w, cy, 0);
+        int shift = (((cy - y) / 4) % 2) * 4;
+        for (int cx = x + shift; cx <= x + w; cx += 8) {
+            draw_rect(buffer, cx, cy, cx, cy + 4, 0);
+        }
+    }
+}
+
 void play_mario_nes(uint8_t *buffer, int frame_counter) {
     clear_screen(buffer);
     
@@ -103,10 +454,8 @@ void play_mario_nes(uint8_t *buffer, int frame_counter) {
     // Draw clouds (parallax scrolling)
     for (int cx = 100; cx < 1000; cx += 300) {
         int px = cx - camera_x / 2;
-        if (px >= -30 && px < 320) {
-            draw_circle(buffer, px, 50, 12, 7);
-            draw_circle(buffer, px + 10, 50, 10, 7);
-            draw_circle(buffer, px - 10, 50, 10, 7);
+        if (px >= -40 && px < 320) {
+            draw_nes_cloud(buffer, px, 40);
         }
     }
 
@@ -121,8 +470,7 @@ void play_mario_nes(uint8_t *buffer, int frame_counter) {
     int ground_scroll = camera_x % 16;
     for (int x = -16; x < 336; x += 16) {
         int px = x - ground_scroll;
-        draw_rect(buffer, px, 219, px + 14, 239, 1);
-        draw_rect(buffer, px + 1, 220, px + 13, 238, 3);
+        draw_ground_block(buffer, px, 219);
     }
 
     // Draw Green Pipes (using the Flappy Bird style)
@@ -161,11 +509,12 @@ void play_mario_nes(uint8_t *buffer, int frame_counter) {
     // Draw Castle
     int castle_x = 920 - camera_x;
     if (castle_x >= -60 && castle_x < 320) {
-        draw_rect(buffer, castle_x, 160, castle_x + 50, 218, 1);       // Main wall
-        draw_rect(buffer, castle_x + 10, 140, castle_x + 40, 160, 1);  // Upper tower
+        draw_castle_brick(buffer, castle_x, 160, 50, 58);       // Main wall
+        draw_castle_brick(buffer, castle_x + 10, 140, 30, 20);  // Upper tower
         // Battlements
         for (int bx = 0; bx < 50; bx += 10) {
             draw_rect(buffer, castle_x + bx, 156, castle_x + bx + 5, 159, 1);
+            draw_rect(buffer, castle_x + bx, 156, castle_x + bx + 5, 156, 0);
         }
         draw_rect(buffer, castle_x + 20, 188, castle_x + 30, 218, 0); // Doorway
     }
@@ -305,12 +654,12 @@ void play_mario_nes(uint8_t *buffer, int frame_counter) {
     for (int i = 0; i < NUM_BLOCKS; i++) {
         int bx = blocks[i].x - camera_x;
         if (bx >= -16 && bx < 320) {
-            uint8_t color = blocks[i].is_hit ? 1 : (blocks[i].is_q_block ? 3 : 5);
-            draw_rect(buffer, bx, blocks[i].y, bx + 15, blocks[i].y + 15, color);
-            // Draw [?] inside question blocks
-            if (blocks[i].is_q_block && !blocks[i].is_hit) {
-                draw_rect(buffer, bx + 6, blocks[i].y + 4, bx + 10, blocks[i].y + 5, 7);
-                draw_rect(buffer, bx + 8, blocks[i].y + 6, bx + 9, blocks[i].y + 11, 7);
+            if (blocks[i].is_hit) {
+                draw_hit_block(buffer, bx, blocks[i].y);
+            } else if (blocks[i].is_q_block) {
+                draw_q_block(buffer, bx, blocks[i].y, frame_counter);
+            } else {
+                draw_brick_block(buffer, bx, blocks[i].y);
             }
         }
     }
@@ -353,11 +702,8 @@ void play_mario_nes(uint8_t *buffer, int frame_counter) {
 
             int gx = g->x - camera_x;
             if (gx >= -16 && gx < 320) {
-                // Draw Goomba
-                draw_circle(buffer, gx, g->y, 6, 1); // Brown body
-                draw_rect(buffer, gx - 4, g->y + 2, gx + 4, g->y + 5, 5); // Feet
-                draw_pixel(buffer, gx - 2, g->y - 2, 7); // Eyes
-                draw_pixel(buffer, gx + 2, g->y - 2, 7);
+                const char **goomba_sprite = ((frame_counter / 6) % 2 == 0) ? goomba_walk_0 : goomba_walk_1;
+                draw_nes_sprite(buffer, gx, g->y + 7, goomba_sprite, 16, 16, false);
             }
 
             // Collision with Mario
@@ -378,7 +724,7 @@ void play_mario_nes(uint8_t *buffer, int frame_counter) {
             g->squish_timer--;
             int gx = g->x - camera_x;
             if (gx >= -16 && gx < 320) {
-                draw_rect(buffer, gx - 8, g->y + 3, gx + 8, g->y + 5, 1); // squished flat
+                draw_nes_sprite(buffer, gx, g->y + 7, goomba_squished, 16, 16, false);
             }
         }
     }
@@ -420,13 +766,10 @@ void play_mario_nes(uint8_t *buffer, int frame_counter) {
         int kx = koopa.x - camera_x;
         if (kx >= -16 && kx < 320) {
             if (koopa.state == KOOPA_WALK) {
-                draw_circle(buffer, kx, koopa.y - 4, 5, 2); // Green shell body
-                draw_circle(buffer, kx + (koopa.vx > 0 ? 4 : -4), koopa.y - 9, 3, 3); // Yellow head
-                draw_rect(buffer, kx - 2, koopa.y + 1, kx - 1, koopa.y + 5, 3); // Legs
-                draw_rect(buffer, kx + 1, koopa.y + 1, kx + 2, koopa.y + 5, 3);
+                const char **koopa_sprite = ((frame_counter / 6) % 2 == 0) ? koopa_walk_0 : koopa_walk_1;
+                draw_nes_sprite(buffer, kx, koopa.y + 5, koopa_sprite, 16, 24, koopa.vx > 0);
             } else { // Shell/Slide Shell
-                draw_circle(buffer, kx, koopa.y + 1, 6, 2); // Green shell
-                draw_rect(buffer, kx - 4, koopa.y - 2, kx + 4, koopa.y - 1, 7); // White shell trim
+                draw_nes_sprite(buffer, kx, koopa.y + 5, koopa_shell, 16, 16, false);
             }
         }
 
@@ -472,7 +815,22 @@ void play_mario_nes(uint8_t *buffer, int frame_counter) {
     // --- DRAW MARIO ---
     if (level_state != MARIO_LEVEL_END) {
         int mx = mario_x - camera_x;
-        draw_pro_mario(buffer, mx, mario_y);
+        const char **mario_sprite;
+        bool is_flipped = (mario_vx < 0);
+        if (level_state == MARIO_FLAG_SLIDE) {
+            mario_sprite = mario_slide;
+        } else if (mario_is_jumping) {
+            mario_sprite = mario_jump;
+        } else if (mario_vx == 0) {
+            mario_sprite = mario_walk_0;
+        } else {
+            int anim = mario_anim_frame % 4;
+            if (anim == 0) mario_sprite = mario_walk_0;
+            else if (anim == 1) mario_sprite = mario_walk_1;
+            else if (anim == 2) mario_sprite = mario_walk_0;
+            else mario_sprite = mario_walk_2;
+        }
+        draw_nes_sprite(buffer, mx, mario_y + 1, mario_sprite, 12, 16, is_flipped);
     }
 
     // Draw HUD Score
