@@ -1,6 +1,7 @@
 #include "common.h"
 
 static uint32_t current_frame = 0;
+static uint32_t total_frames = 0;
 static uint64_t next_frame_time = 0;
 static uint64_t frame_delay_us = 50000; // 50ms (20 FPS)
 
@@ -24,9 +25,9 @@ void draw_video_frame(uint8_t *buffer, const uint8_t *frame_data) {
 
 void init_bad_apple() {
     frame_delay_us = 50000; // 20 FPS
-    uint32_t total_frames = (bad_apple_bin_end - bad_apple_bin) / 1536;
-    if (total_frames > 150) {
-        current_frame = get_rand() % (total_frames - 150);
+    total_frames = (bad_apple_bin_end - bad_apple_bin) / 1536;
+    if (total_frames > 0) {
+        current_frame = get_rand() % total_frames;
     } else {
         current_frame = 0;
     }
@@ -34,14 +35,17 @@ void init_bad_apple() {
 }
 
 void play_video(uint8_t *buffer) {
-    draw_video_frame(buffer, bad_apple_bin + (current_frame * 1536));
+    if (total_frames == 0) return;
+    draw_video_frame(buffer, bad_apple_bin + ((current_frame % total_frames) * 1536));
 }
 
 void tick_video() {
+    if (total_frames == 0) return;
+
     uint64_t now = time_us_64();
     if (now >= next_frame_time) {
         uint32_t frames_to_advance = (now - next_frame_time) / frame_delay_us + 1;
-        current_frame = (current_frame + frames_to_advance);
+        current_frame = (current_frame + frames_to_advance) % total_frames;
         next_frame_time += frames_to_advance * frame_delay_us;
     }
 }
