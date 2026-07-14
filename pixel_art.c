@@ -1841,193 +1841,289 @@ void play_nine_eleven(uint8_t *buf, int frame) {
 void init_pinup() {}
 
 void play_pinup(uint8_t *buf, int frame) {
-    int mode = (frame / 400) % 2;
+    int mode = (frame / 500) % 2;
     if (mode == 0) {
-        // ── Scene 1: Retro Computer Pinup Girl (Original) ──────────────────────
-        // ── BACKGROUND: neon retro scanlines and ambient grid ──────────────────────
+        // ── Scene 1: Retro Computer Pinup Girl (Original, Enhanced) ──────────────
+        // Ambient background: deep blue to magenta vertical gradient scanlines
         for (int y = 0; y < 240; y++) {
-            int ambient = (y % 16 == 0) ? 5 : 0; // magenta horizontal lines
+            uint8_t bg_color = 0; // Black base
+            if (y < 80) bg_color = (y % 4 == 0) ? 5 : 0; // Magenta stars
+            else bg_color = (y % 8 == 0) ? 4 : 0; // Blue grid lines
             for (int x = 0; x < 320; x++) {
-                draw_pixel(buf, x, y, ambient);
+                draw_pixel(buf, x, y, bg_color);
             }
         }
-        // Draw converging perspective floor grid (synthwave style, but green/cyan)
-        for (int x = 0; x < 320; x += 30) {
-            for (int y = 180; y < 240; y++) {
-                int px = 160 + ((x - 160) * (y - 140)) / 40;
-                if (px >= 0 && px < 320) draw_pixel(buf, px, y, 6); // cyan perspective lines
+
+        // Draw a beautiful synthwave grid floor with converging perspective
+        for (int x = 0; x < 320; x += 20) {
+            for (int y = 160; y < 240; y++) {
+                int px = 160 + ((x - 160) * (y - 130)) / 30;
+                if (px >= 0 && px < 320) {
+                    draw_pixel(buf, px, y, 6); // Cyan grid lines
+                }
             }
         }
-        // Horizontal floor grid lines scrolling
-        int scroll = (frame / 2) % 15;
-        for (int y = 180 + scroll; y < 240; y += 15) {
+        // Scrolling horizontal floor lines
+        int scroll = (frame / 2) % 12;
+        for (int y = 160 + scroll; y < 240; y += 12) {
             draw_rect(buf, 0, y, 319, y, 6);
         }
 
-        // ── RETRO CRT COMPUTER WORKSTATION (Left Side) ───────────────────────────
-        // Casing (dithered white/grey/blue)
-        draw_rect(buf, 30, 80, 130, 180, 7); // outer white bezel
-        draw_rect(buf, 35, 85, 125, 175, 0); // inner shadow
-        draw_rect(buf, 40, 90, 120, 155, 4); // blue inner bezel
+        // ── DETAILED CRT MONITOR & WORKSTATION ──────────────────────────────────
+        // Outer monitor casing with 3D dithered shading
+        art_shaded_rect(buf, 25, 75, 125, 175, 7, 7, 0); // main grey casing
+        // Back CRT tube bulge/vents
+        draw_rect(buf, 35, 65, 115, 75, 0);
+        for (int vx = 40; vx < 110; vx += 6) {
+            draw_rect(buf, vx, 68, vx + 2, 73, 7); // cooling vents
+        }
+        // Bezel shadow and inner bezel
+        draw_rect(buf, 30, 80, 120, 170, 0);
+        draw_rect(buf, 32, 82, 118, 168, 4); // blue inner bezel
 
         // CRT Screen (Green phosphor glow)
-        draw_rect(buf, 45, 95, 115, 150, 2); // green screen
-        // Scanlines on screen
-        for (int y = 95; y <= 150; y += 2) {
-            draw_rect(buf, 45, y, 115, y, 0); // black scanlines
+        draw_rect(buf, 38, 88, 112, 142, 2); // Screen face
+        // Raster scanline overlay
+        for (int y = 88; y <= 142; y += 2) {
+            draw_rect(buf, 38, y, 112, y, 0);
         }
-        // Glowing matrix/terminal text on CRT
-        draw_string(buf, "C:\\> RUN ART", 48, 100, 1, 3); // yellow prompt
-        draw_string(buf, "SYS_OK", 48, 112, 1, 7);
-        draw_string(buf, "LOAD: PINUP", 48, 124, 1, 7);
-        // Glowing cursor
-        if (frame % 30 < 15) {
-            draw_rect(buf, 110, 124, 114, 132, 7);
-        }
-
-        // Computer stand
-        draw_rect(buf, 65, 180, 95, 195, 7);
-        // Keyboard at the bottom
-        draw_rect(buf, 25, 195, 110, 205, 7);
-        draw_rect(buf, 28, 198, 107, 203, 0); // black keyboard keys area
-        for (int kx = 30; kx < 105; kx += 4) {
-            draw_pixel(buf, kx, 200, 7); // key tops
+        // Screen text & cursor
+        draw_string(buf, "C:\\> RUN PINUP", 42, 92, 1, 3); // Yellow prompt
+        draw_string(buf, "STATUS: OK", 42, 102, 1, 7); // White text
+        draw_string(buf, "VRAM: 640KB", 42, 112, 1, 6); // Cyan info
+        draw_string(buf, "MODE: MAX-RES", 42, 122, 1, 7);
+        if (frame % 20 < 10) {
+            draw_rect(buf, 100, 122, 104, 129, 3); // blinking cursor
         }
 
-        // Floppy disks on the desk
-        draw_rect(buf, 120, 198, 135, 205, 1); // red floppy
-        draw_rect(buf, 122, 195, 127, 202, 7); // label
-        draw_rect(buf, 130, 198, 145, 205, 4); // blue floppy
+        // Monitor controls & LED
+        draw_rect(buf, 35, 155, 115, 165, 0); // control strip
+        draw_circle(buf, 45, 160, 2, 7); // dials
+        draw_circle(buf, 55, 160, 2, 7);
+        // Power LED (Green / Orange blinking)
+        uint8_t led_col = (frame % 30 < 15) ? 2 : 3;
+        draw_circle(buf, 105, 160, 2, led_col);
 
-        // ── COMPUTER-THEMED RETRO PINUP GIRL (Sitting on CRT Monitor) ────────────
-        // Hair: Long Magenta (5) hair
-        draw_circle(buf, 125, 55, 15, 5);
-        draw_circle(buf, 130, 70, 12, 5);
-        
-        // Draw body/torso
-        draw_rect(buf, 125, 80, 140, 110, 4); // Blue top/torso
-        draw_rect(buf, 128, 85, 137, 95, 3); // Skin/chest area
-        
-        // Draw head
-        draw_circle(buf, 124, 55, 8, 3); // face skin
-        // Hair front layer (bangs & ponytail)
-        draw_circle(buf, 118, 52, 4, 5);
-        draw_rect(buf, 124, 42, 128, 52, 5);
-        draw_pixel(buf, 120, 56, 0); // eye
-        draw_pixel(buf, 124, 58, 1); // lips/mouth (red)
+        // Monitor swivel stand
+        art_shaded_rect(buf, 60, 175, 90, 190, 7, 7, 0);
 
-        // Arms: Leaning back on the monitor
-        draw_rect(buf, 135, 85, 155, 90, 3); // arm stretching back to rest
-        draw_rect(buf, 150, 90, 155, 115, 3); // forearm resting on monitor top
-        draw_rect(buf, 112, 85, 122, 90, 3); // front arm resting on knee
-
-        // Legs: Dangling down the side of the monitor
-        draw_rect(buf, 128, 110, 142, 130, 3);
-        // Knees
-        draw_circle(buf, 135, 130, 5, 3);
-        // Lower legs: White (7) thigh-high boots, with Red (1) laces/details!
-        draw_rect(buf, 132, 135, 140, 175, 7); // boots
-        draw_rect(buf, 130, 170, 144, 177, 7); // feet
-        for (int ly = 140; ly < 168; ly += 6) {
-            draw_pixel(buf, 136, ly, 1); // red boot laces/detail
+        // Keyboard & desk accessories
+        draw_rect(buf, 15, 190, 115, 202, 7); // Keyboard base
+        draw_rect(buf, 18, 193, 112, 199, 0); // Key well
+        for (int kx = 21; kx < 110; kx += 4) {
+            draw_pixel(buf, kx, 195, 7); // individual keys
+            draw_pixel(buf, kx + 1, 197, 7);
         }
-        
-        // Draw some dithered shadows under her
-        for (int sy = 110; sy < 125; sy++) {
-            art_dither_pixel(buf, 142, sy, 0, 2);
+        // Floppy Disks
+        draw_rect(buf, 122, 192, 137, 202, 1); // Red 3.5" floppy
+        draw_rect(buf, 125, 189, 130, 196, 7); // white label
+        draw_rect(buf, 132, 192, 147, 202, 4); // Blue 3.5" floppy
+
+        // ── HIGH-RESOLUTION PINUP GIRL (Sitting on CRT) ─────────────────────────
+        // Detailed hair (Magenta and Red locks flowing over shoulders)
+        int h_center = 125;
+        // Ponytail/back hair with highlight shading
+        draw_circle(buf, h_center + 10, 48, 16, 5); // Main hair mass
+        draw_circle(buf, h_center + 18, 55, 12, 1); // Red hair highlights
+        draw_rect(buf, h_center + 4, 52, h_center + 14, 85, 5); // Flowing lock
+        draw_rect(buf, h_center + 8, 60, h_center + 18, 90, 1);
+
+        // Face & head profile
+        draw_circle(buf, h_center, 46, 9, 3); // Face skin base
+        draw_circle(buf, h_center - 2, 48, 8, 3);
+        // Hair bangs and front fringe
+        draw_circle(buf, h_center - 4, 40, 5, 5);
+        draw_rect(buf, h_center - 6, 38, h_center + 4, 44, 5);
+        // Face features
+        draw_pixel(buf, h_center - 5, 46, 0); // Detailed eye
+        draw_pixel(buf, h_center - 6, 47, 0); // eye lash
+        draw_pixel(buf, h_center - 3, 50, 1); // Lips (Red lipstick)
+        draw_pixel(buf, h_center - 4, 50, 1);
+        draw_pixel(buf, h_center - 1, 48, 5); // Blushing cheek
+
+        // Elegant Neck & Shoulders
+        draw_rect(buf, h_center - 1, 55, h_center + 4, 63, 3); // Neck
+        draw_pixel(buf, h_center - 2, 57, 3);
+
+        // Torso / Bustier (Blue corset with Yellow/Magenta stitching and laces)
+        draw_rect(buf, 120, 63, 142, 92, 4); // Blue corset body
+        draw_rect(buf, 124, 60, 138, 63, 3); // Exposed chest/collarbone
+        draw_rect(buf, 128, 67, 134, 88, 5); // Magenta center panel
+        // Lacing details
+        for (int ly = 70; ly <= 84; ly += 4) {
+            draw_pixel(buf, 130, ly, 3); // Golden laces
+            draw_pixel(buf, 132, ly, 3);
         }
 
-        // Glowing neon heart next to her
-        int heart_anim = (frame / 5) % 3;
-        draw_circle(buf, 165, 45, 5 + heart_anim, 1); // red heart
-        draw_circle(buf, 175, 45, 5 + heart_anim, 1);
-        draw_rect(buf, 161, 45, 179, 50, 1);
-        // Bottom point of heart
-        for (int hx = 161; hx <= 179; hx++) {
-            int hy = 50 + (hx < 170 ? (hx - 161) : (179 - hx));
-            draw_rect(buf, hx, 50, hx, hy, 1);
+        // Arms: Leaning back support
+        // Left arm resting back on the monitor
+        draw_rect(buf, 138, 65, 155, 71, 3); // Upper arm
+        draw_rect(buf, 148, 71, 154, 98, 3); // Forearm
+        draw_rect(buf, 146, 98, 152, 102, 3); // Hand resting
+        // Right arm resting on leg
+        draw_rect(buf, 116, 65, 122, 75, 3); // Shoulder/upper
+        draw_rect(buf, 110, 75, 118, 92, 3); // Forearm
+        draw_rect(buf, 108, 92, 114, 96, 3); // Hand
+
+        // Legs: Detailed white thigh-high boots with red details, crossed elegantly
+        // Thighs (Skin color 3)
+        draw_rect(buf, 120, 92, 138, 110, 3);
+        art_dither_pixel(buf, 138, 100, 5, 2); // shadow under buttocks
+
+        // Crossed leg (Over)
+        draw_rect(buf, 116, 110, 140, 124, 3); // Thigh
+        // Thigh-high top rim (Red lace band)
+        draw_rect(buf, 114, 124, 134, 127, 1);
+        // Left Boot (White with Red laces/details)
+        draw_rect(buf, 112, 128, 130, 165, 7); // boot leg
+        for (int lly = 132; lly <= 160; lly += 6) {
+            draw_pixel(buf, 120, lly, 1); // Red laces
+            draw_pixel(buf, 121, lly + 1, 1);
         }
-        
-        // Title/Overlay text
-        draw_string(buf, "RETRO PINUP V1.0", 175, 215, 1, 5);
+        draw_rect(buf, 108, 160, 126, 167, 7); // boot foot pointing down
+
+        // Hanging leg (Under)
+        draw_rect(buf, 132, 110, 146, 135, 3); // Thigh
+        draw_rect(buf, 134, 135, 144, 138, 1); // Red top rim
+        draw_rect(buf, 133, 139, 143, 180, 7); // Boot leg
+        for (int rly = 142; rly <= 176; rly += 6) {
+            draw_pixel(buf, 137, rly, 1); // laces
+        }
+        draw_rect(buf, 133, 178, 148, 184, 7); // boot foot
+
+        // Dynamic glowing Neon Hearts next to her (Heart beating animation)
+        int beat = (frame / 6) % 3;
+        int hx = 175, hy = 55;
+        draw_circle(buf, hx - 5, hy, 5 + beat, 1);
+        draw_circle(buf, hx + 5, hy, 5 + beat, 1);
+        draw_rect(buf, hx - 9, hy, hx + 9, hy + 5, 1);
+        for (int px = hx - 9; px <= hx + 9; px++) {
+            int p_depth = hy + 5 + (px < hx ? (px - (hx - 9)) : ((hx + 9) - px));
+            draw_rect(buf, px, hy + 5, px, p_depth, 1);
+        }
+        // Inner glowing core of the heart
+        draw_circle(buf, hx - 4, hy + 1, 2, 7);
+        draw_circle(buf, hx + 4, hy + 1, 2, 7);
+
+        // Title Overlay text
+        draw_string(buf, "RETRO PINUP V2.0", 175, 215, 1, 5);
+        draw_string(buf, "MAX PIXELS ACTIVE", 175, 225, 1, 6);
     } else {
-        // ── Scene 2: Queer Synthwave Pinup ────────────────────────────────────
+        // ── Scene 2: Queer Synthwave Pinup (Enhanced & Waving Flag) ──────────────
         // Clear background with neon grid and stars
         for (int y = 0; y < 240; y++) {
-            int ambient = (y % 16 == 0) ? 6 : 0; // cyan horizontal lines
+            int ambient = (y % 12 == 0) ? 6 : 0; // Cyan grid lines
             for (int x = 0; x < 320; x++) {
                 draw_pixel(buf, x, y, ambient);
             }
         }
         draw_stars(buf, frame);
-        
-        // Large glowing pride heart/circle in background (Magenta/Blue/White)
-        int bg_cx = 220, bg_cy = 100, bg_r = 55;
-        // Trans pride colors radiating as concentric rings
-        draw_circle(buf, bg_cx, bg_cy, bg_r, 6);      // cyan outer
-        draw_circle(buf, bg_cx, bg_cy, bg_r - 10, 5); // magenta mid
-        draw_circle(buf, bg_cx, bg_cy, bg_r - 20, 7); // white inner
-        draw_circle(buf, bg_cx, bg_cy, bg_r - 30, 5); // magenta core
-        draw_circle(buf, bg_cx, bg_cy, bg_r - 40, 6); // cyan center
-        
-        // ── Retro Vintage Computer (Left Side) ───────────────────────────────
-        draw_rect(buf, 20, 90, 110, 175, 7); // grey case
-        draw_rect(buf, 25, 95, 105, 150, 0); // screen bezel
-        draw_rect(buf, 30, 100, 100, 145, 6); // glowing cyan screen
-        for (int y = 100; y <= 145; y += 2) {
-            draw_rect(buf, 30, y, 100, y, 0); // scanlines
+
+        // Giant Synthwave Sunset Sun (Trans Flag Theme)
+        int sun_cx = 210, sun_cy = 90, sun_r = 60;
+        for (int y = sun_cy - sun_r; y <= sun_cy + sun_r; y++) {
+            // Synthwave horizontal gaps cutting the sun
+            if (y > sun_cy && (y % 8 == 0 || y % 8 == 1 || y % 8 == 2)) continue;
+            
+            int dy = y - sun_cy;
+            int dx_max = isqrt(sun_r * sun_r - dy * dy);
+            for (int x = sun_cx - dx_max; x <= sun_cx + dx_max; x++) {
+                // Trans pride colors in stripes
+                int stripe = (y - (sun_cy - sun_r)) * 5 / (sun_r * 2);
+                uint8_t col = 6; // Cyan
+                if (stripe == 1 || stripe == 3) col = 5; // Magenta
+                else if (stripe == 2) col = 7; // White
+                draw_pixel(buf, x, y, col);
+            }
         }
-        draw_string(buf, "QUEER_ART", 35, 105, 1, 5); // magenta text
-        draw_string(buf, "SYSTEM", 35, 117, 1, 7);
-        draw_string(buf, "ACTIVE", 35, 129, 1, 3); // yellow active
+
+        // ── Retro Workstation (Left Side) ───────────────────────────────────────
+        art_shaded_rect(buf, 15, 85, 105, 175, 7, 7, 0); // Casing
+        draw_rect(buf, 20, 90, 100, 150, 0); // Bezel
+        draw_rect(buf, 24, 94, 96, 146, 6); // Screen
+        // Raster lines
+        for (int y = 94; y <= 146; y += 2) {
+            draw_rect(buf, 24, y, 96, y, 0);
+        }
+        draw_string(buf, "SYS: ACTIVE", 28, 98, 1, 5);
+        draw_string(buf, "QUEER_GFX", 28, 110, 1, 7);
+        draw_string(buf, "VGA_MODE", 28, 122, 1, 3);
+
+        // Keyboard & desk
+        draw_rect(buf, 10, 185, 110, 195, 7);
+        draw_rect(buf, 5, 195, 150, 205, 0); // table outline
+
+        // ── Queer Butch Pinup Model (Center-Right) ──────────────────────────────
+        // Asymmetric pixie cut hair in Magenta and Cyan
+        int px_c = 165, py_c = 65;
+        draw_circle(buf, px_c, py_c, 15, 5); // Magenta base
+        draw_rect(buf, px_c - 12, py_c - 10, px_c + 6, py_c + 2, 6); // Cyan side-shave / undercut
+        for (int hx = px_c - 10; hx <= px_c + 10; hx += 3) {
+            draw_pixel(buf, hx, py_c - 12, 7); // White hair spikes/highlights
+        }
+
+        // Face & features
+        draw_circle(buf, px_c - 4, py_c + 4, 9, 3); // Face skin
+        draw_pixel(buf, px_c - 9, py_c + 4, 0); // eye
+        draw_pixel(buf, px_c - 10, py_c + 5, 0); // eyebrow
+        draw_pixel(buf, px_c - 8, py_c + 9, 1); // Red lipstick
+        draw_pixel(buf, px_c - 7, py_c + 9, 1);
+
+        // Leather Jacket (Black with White/Silver zippers and lapels)
+        draw_rect(buf, px_c - 12, py_c + 14, px_c + 22, py_c + 60, 0); // Jacket body
+        draw_rect(buf, px_c - 6, py_c + 14, px_c, py_c + 30, 7); // Silver collar zipper
+        draw_pixel(buf, px_c - 10, py_c + 18, 7); // Shoulder studs
+        draw_pixel(buf, px_c + 18, py_c + 18, 7);
+
+        // Tank top (Trans pride stripes under jacket)
+        draw_rect(buf, px_c - 2, py_c + 22, px_c + 12, py_c + 40, 6); // Cyan stripe
+        draw_rect(buf, px_c - 2, py_c + 27, px_c + 12, py_c + 32, 7); // White stripe
+        draw_rect(buf, px_c - 2, py_c + 33, px_c + 12, py_c + 38, 5); // Magenta stripe
+
+        // Left arm resting on hip
+        draw_rect(buf, px_c - 24, py_c + 20, px_c - 12, py_c + 26, 3); // Upper arm
+        draw_rect(buf, px_c - 26, py_c + 26, px_c - 20, py_c + 42, 3); // Forearm
+        draw_rect(buf, px_c - 28, py_c + 42, px_c - 22, py_c + 46, 3); // Hand on hip
+
+        // Right arm holding flagpole
+        draw_rect(buf, px_c + 18, py_c + 22, px_c + 36, py_c + 28, 3); // Arm stretching out
+
+        // ── DYNAMICALLY WAVING PRIDE FLAG ─────────────────────────────────────
+        int pole_x = px_c + 36;
+        draw_rect(buf, pole_x, py_c - 10, pole_x + 2, py_c + 70, 7); // Flagpole
+        draw_circle(buf, pole_x + 1, py_c - 13, 3, 3); // Gold tip
         
-        // Keyboard and desk
-        draw_rect(buf, 15, 185, 115, 195, 7); // keyboard
-        draw_rect(buf, 10, 195, 150, 205, 0); // black desk line
-        
-        // ── Queer Butch Pinup Model (Center-Right) ──────────────────────────
-        // Hair: Asymmetric undercut pixie cut in magenta (5) and cyan (6)
-        draw_circle(buf, 175, 65, 14, 5); // hair back
-        draw_rect(buf, 170, 55, 185, 65, 6); // cyan highlights
-        
-        // Skin: Yellow (3)
-        draw_circle(buf, 172, 70, 8, 3); // face
-        draw_pixel(buf, 168, 70, 0); // eye
-        draw_pixel(buf, 171, 74, 1); // red lips
-        
-        // Leather Jacket (Black 0 with White 7 collar highlight)
-        draw_rect(buf, 165, 82, 195, 125, 0); // jacket body
-        draw_rect(buf, 172, 82, 178, 92, 7); // silver/white lapel
-        draw_rect(buf, 182, 82, 188, 92, 7);
-        
-        // Trans/Rainbow striped tank top underneath
-        draw_rect(buf, 174, 92, 186, 105, 6); // cyan stripe
-        draw_rect(buf, 174, 97, 186, 101, 7); // white stripe
-        draw_rect(buf, 174, 102, 186, 105, 5); // magenta stripe
-        
-        // Arm resting on hip
-        draw_rect(buf, 155, 90, 165, 96, 3); // arm
-        draw_rect(buf, 150, 96, 156, 110, 3); // forearm resting on hip
-        
-        // Arm holding flag
-        draw_rect(buf, 190, 90, 205, 95, 3); // arm reaching out
-        // Pride Flag stick
-        draw_rect(buf, 205, 75, 207, 110, 7); // flagpole
-        draw_circle(buf, 206, 73, 2, 3); // gold tip
-        // Tiny waving pride flag (Trans colors)
-        draw_rect(buf, 208, 77, 230, 92, 6); // cyan
-        draw_rect(buf, 208, 80, 230, 89, 5); // magenta
-        draw_rect(buf, 208, 83, 230, 86, 7); // white
-        
-        // Legs: Stylish tight pants (Blue 4) and boots
-        draw_rect(buf, 168, 125, 192, 180, 4); // pants
-        draw_rect(buf, 168, 180, 178, 205, 7); // white boots
-        draw_rect(buf, 182, 180, 192, 205, 7);
-        draw_rect(buf, 164, 200, 180, 207, 0); // black soles
-        draw_rect(buf, 180, 200, 196, 207, 0);
-        
-        // Title Overlay
-        draw_string(buf, "QUEER RETRO PINUP", 160, 215, 1, 6);
+        // Waving Trans Pride Flag
+        int flag_start_x = pole_x + 3;
+        int flag_end_x = flag_start_x + 40;
+        int flag_width = flag_end_x - flag_start_x;
+        for (int fx = flag_start_x; fx <= flag_end_x; fx++) {
+            // Wave offset calculated via sine wave
+            float angle = (float)fx * 0.15f - (float)frame * 0.2f;
+            int wave_offset = (int)(sinf(angle) * 5.0f);
+            
+            // Draw flag column
+            int col_y = py_c - 5 + wave_offset;
+            for (int fy = 0; fy < 30; fy++) {
+                int stripe = fy * 5 / 30;
+                uint8_t col = 6; // Cyan (outer)
+                if (stripe == 1 || stripe == 3) col = 5; // Magenta (middle)
+                else if (stripe == 2) col = 7; // White (core)
+                draw_pixel(buf, fx, col_y + fy, col);
+            }
+        }
+
+        // Legs: Tight Blue jeans & detailed boots
+        draw_rect(buf, px_c - 8, py_c + 60, px_c + 18, py_c + 115, 4); // Jeans
+        draw_rect(buf, px_c - 10, py_c + 115, px_c + 2, py_c + 140, 7); // Left Boot
+        draw_rect(buf, px_c + 8, py_c + 115, px_c + 20, py_c + 140, 7); // Right Boot
+        // Boot soles & heels (Black)
+        draw_rect(buf, px_c - 12, py_c + 138, px_c + 4, py_c + 142, 0);
+        draw_rect(buf, px_c + 6, py_c + 138, px_c + 22, py_c + 142, 0);
+
+        // Title Overlay text
+        draw_string(buf, "QUEER RETRO PINUP V2.0", 140, 215, 1, 6);
+        draw_string(buf, "MAX DETAIL PINUP ACTIVE", 140, 225, 1, 7);
     }
 }
 
