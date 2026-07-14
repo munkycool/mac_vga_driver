@@ -120,9 +120,22 @@ static void draw_rear_countach(uint8_t *buf, int cx, int cy, int frame) {
     draw_rect(buf, cx + 16, cy - 13, cx + 32, cy - 9, 1);
     draw_rect(buf, cx + 20, cy - 12, cx + 28, cy - 10, 3);
 
-    // License Plate (White 7)
-    draw_rect(buf, cx - 10, cy - 13, cx + 10, cy - 9, 7);
-    draw_string(buf, "COUNTACH", cx - 8, cy - 12, 1, 0); // black text
+    // License Plate (White 7) - Cycles every 120 frames (~2 seconds)
+    const char *plates[] = {
+        "COUNTACH",
+        "NPP",
+        "PNL",
+        "I SEE YOU"
+    };
+    const char *plate_text = plates[(frame / 120) % 4];
+    int len = 0;
+    while (plate_text[len] != '\0') len++;
+    int text_width = len * 4 - 1;
+    int half_w = (text_width + 1) / 2;
+    int plate_w = half_w > 10 ? half_w : 10;
+
+    draw_rect(buf, cx - plate_w, cy - 13, cx + plate_w, cy - 9, 7);
+    draw_string(buf, plate_text, cx - text_width / 2, cy - 12, 1, 0); // black text
 
     // Huge Rear Spoiler/Wing (Red 1)
     draw_rect(buf, cx - 46, cy - 32, cx + 46, cy - 28, 1);

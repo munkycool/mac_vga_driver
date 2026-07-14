@@ -98,6 +98,10 @@ void init_screensaver(enum ProgramState state) {
         init_happy_mdd();
     } else if (state == STATE_HAPPY_OCD) {
         init_happy_ocd();
+    } else if (state == STATE_HAPPY_MANIA) {
+        init_happy_mania();
+    } else if (state == STATE_HAPPY_PSYCHOSIS) {
+        init_happy_psychosis();
     } else if (state == STATE_SPLASH) {
         init_splash();
     }
@@ -376,6 +380,10 @@ int main() {
             play_happy_mdd((uint8_t *)back_buffer, state_frame_counter);
         } else if (current_state == STATE_HAPPY_OCD) {
             play_happy_ocd((uint8_t *)back_buffer, state_frame_counter);
+        } else if (current_state == STATE_HAPPY_MANIA) {
+            play_happy_mania((uint8_t *)back_buffer, state_frame_counter);
+        } else if (current_state == STATE_HAPPY_PSYCHOSIS) {
+            play_happy_psychosis((uint8_t *)back_buffer, state_frame_counter);
         } else if (current_state == STATE_SPLASH) {
             play_splash((uint8_t *)back_buffer, state_frame_counter);
         }
