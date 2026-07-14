@@ -222,11 +222,7 @@ void __wrap_update_input(void) {
         skip_suppress_frames--;
     } else if (global_input.skip) {
         // First frame where skip is true: allow it, then suppress the rest.
-        // Also reset interactive mode immediately so the *incoming* new scene
-        // has its frame_counter running from frame 0.
         skip_suppress_frames = 8;   // decay_skip starts at 8 in common.c
-        global_input.interactive = false;
-        global_input.timeout_ticks = 0;
     }
 
     // If no direction or action key is actively held (all decays have expired),
