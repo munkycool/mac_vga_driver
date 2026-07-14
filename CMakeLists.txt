@@ -35,6 +35,7 @@ add_executable(mac_vga
     splash.c
     mario_show.c
     minecraft.c
+    chan.c
     bad_apple.s
 )
 
