@@ -119,12 +119,16 @@ static void handle_key_down(SDL_Keycode sym) {
     }
 }
 
-// Render the 320x240 front_buffer to the SDL Window
+// Render the 320x240 back_buffer (just drawn into by the game) to the SDL Window
 static void render_framebuffer() {
     uint32_t pixels[320 * 240];
-    const uint8_t *fb = (const uint8_t *)front_buffer;
+    // At the point tight_loop_contents is called, the game has just finished writing
+    // to back_buffer. Rendering it directly shows the freshest frame.
+    const uint8_t *fb = (const uint8_t *)back_buffer;
     
     for (int i = 0; i < 320 * 240; i++) {
+        // Each byte stores two 4-bit nibbles: (color|sync) << 4 | (color|sync)
+        // The color is in bits [2:0]; bit 3 is the sync bit.
         uint8_t color_idx = fb[i] & 0x07;
         pixels[i] = sdl_palette[color_idx];
     }
@@ -155,17 +159,17 @@ void tight_loop_contents(void) {
     if (now - last_frame_time_ms >= 15) {
         last_frame_time_ms = now;
         
-        // 1. Render the active front buffer to the screen
+        // Render the back_buffer (just filled by the game) to the SDL window.
         render_framebuffer();
         
-        // 2. Simulate scanline timing.
-        // dma_handler increments current_line and sets vblank_triggered = true at V_ACTIVE (480)
-        // Calling it 525 times completes a full vertical cycle.
-        for (int i = 0; i < 525; i++) {
-            dma_handler();
-        }
+        // Signal vblank directly.  The Pico's real dma_handler() early-exits
+        // in the emulator because dma_hw->ints0 is never set by the stub DMA,
+        // so we bypass it and drive the flag ourselves.  This unblocks the
+        // "while (!vblank_triggered)" wait in main.c so the page-swap and
+        // next game-logic tick can proceed.
+        vblank_triggered = true;
     } else {
-        // Sleep a tiny bit to reduce CPU usage
+        // Sleep a tiny bit to reduce CPU usage without burning the whole core.
         SDL_Delay(1);
     }
 }
