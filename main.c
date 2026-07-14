@@ -1,6 +1,4 @@
 #include "common.h"
-#include "pico/multicore.h"
-#include "pico/status_led.h"
 
 // --- DMA Video Core & Framebuffers ---
 uint32_t scanline_buffers[2][108]; 
@@ -15,25 +13,6 @@ volatile bool vblank_triggered = false;
 int dma_chan_a, dma_chan_b;
 
 void dma_handler();
-
-static void rgb_led_worker() {
-    static const uint32_t colors[] = {
-        PICO_COLORED_STATUS_LED_COLOR_FROM_RGB(0xff, 0x00, 0x00),
-        PICO_COLORED_STATUS_LED_COLOR_FROM_RGB(0xff, 0x7f, 0x00),
-        PICO_COLORED_STATUS_LED_COLOR_FROM_RGB(0xff, 0xff, 0x00),
-        PICO_COLORED_STATUS_LED_COLOR_FROM_RGB(0x00, 0xff, 0x00),
-        PICO_COLORED_STATUS_LED_COLOR_FROM_RGB(0x00, 0xff, 0xff),
-        PICO_COLORED_STATUS_LED_COLOR_FROM_RGB(0x00, 0x00, 0xff),
-        PICO_COLORED_STATUS_LED_COLOR_FROM_RGB(0xff, 0x00, 0xff),
-    };
-
-    int color_index = 0;
-    while (true) {
-        colored_status_led_set_on_with_color(colors[color_index]);
-        color_index = (color_index + 1) % (int)(sizeof(colors) / sizeof(colors[0]));
-        sleep_ms(120);
-    }
-}
 
 // RESTORED: Squeaky-clean game maps and timers setup [10]
 void init_screensaver(enum ProgramState state) {
@@ -173,17 +152,6 @@ void dma_handler() {
 int main() {
     set_sys_clock_khz(151200, true);
     seed_rng();
-
-    if (status_led_init()) {
-        status_led_set_state(true);
-        if (colored_status_led_supported()) {
-            multicore_launch_core1(rgb_led_worker);
-        }
-    } else {
-        gpio_init(PICO_DEFAULT_LED_PIN);
-        gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
-        gpio_put(PICO_DEFAULT_LED_PIN, 1);
-    }
     
     PIO pio = pio0;
     uint sm = 0;
