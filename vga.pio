@@ -1,0 +1,4 @@
+.program vga
+.wrap_target
+    out pins, 4    ; Shift 4 bits to GP7, GP8, GP9, GP10 and autopull
+.wrap

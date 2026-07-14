@@ -1,0 +1,13 @@
+build/
+_deps/
+pico-sdk/
+picotool/
+pioasm/
+pioasm-install/
+generated/
+*.bin
+*.mp4
+*.elf
+*.uf2
+*.hex
+*.map
