@@ -119,6 +119,14 @@ void play_perkins(uint8_t *buf, int frame) {
     draw_rect(buf, 180, 180, 188, 193, 0);
     draw_rect(buf, 212, 182, 220, 193, 0);
 
+    // Dining table & food plates (Steak, potato, cum)
+    draw_rect(buf, 191, 188, 209, 189, 0); // table top
+    draw_rect(buf, 199, 190, 201, 193, 0); // table leg
+    draw_pixel(buf, 194, 187, 1);          // red/brown steak
+    draw_pixel(buf, 195, 187, 3);          // yellow potato
+    draw_pixel(buf, 204, 187, 7);          // white food (cum)
+    draw_pixel(buf, 205, 187, 7);
+
     // 7. Iconic Perkins Flag Sign on a Pole
     draw_rect(buf, 275, 50, 278, 220, 7); // silver pole
     draw_rect(buf, 274, 50, 279, 52, 0);
