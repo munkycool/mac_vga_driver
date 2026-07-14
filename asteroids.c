@@ -6,8 +6,6 @@ static const int SIN16[16] = {0, 49, 90, 118, 128, 118, 90, 49, 0, -49, -90, -11
 
 #define MAX_ASTEROIDS   12
 #define MAX_BULLETS     6
-#define SHIP_X          160
-#define SHIP_Y          120
 
 typedef struct {
     bool active;
@@ -28,6 +26,9 @@ static Bullet bullets[MAX_BULLETS];
 static int ship_angle;
 static int shoot_cooldown;
 static int asteroids_score;
+
+static float ship_x, ship_y;
+static float ship_vx, ship_vy;
 
 // Bresenham's Line Drawing Helper
 static void draw_line(uint8_t *buffer, int x1, int y1, int x2, int y2, uint8_t color) {
@@ -66,6 +67,10 @@ void init_asteroids() {
     ship_angle = 0;
     shoot_cooldown = 0;
     asteroids_score = 0;
+    ship_x = 160.0f;
+    ship_y = 120.0f;
+    ship_vx = 0.0f;
+    ship_vy = 0.0f;
 
     for (int i = 0; i < MAX_ASTEROIDS; i++) asteroids[i].active = false;
     for (int i = 0; i < MAX_BULLETS; i++) bullets[i].active = false;
@@ -83,42 +88,92 @@ void play_asteroids(uint8_t *buffer) {
     // 1. Draw Score
     draw_score(buffer, asteroids_score, 10, 10, 2, 7);
 
-    // 2. Find Nearest Asteroid for AI Targeting
+    // Update ship physics
+    ship_x += ship_vx;
+    ship_y += ship_vy;
+    ship_vx *= 0.95f;
+    ship_vy *= 0.95f;
+
+    // Screen Wrap
+    if (ship_x < 0) ship_x += 320;
+    if (ship_x >= 320) ship_x -= 320;
+    if (ship_y < 0) ship_y += 240;
+    if (ship_y >= 240) ship_y -= 240;
+
+    int SHIP_X = (int)ship_x;
+    int SHIP_Y = (int)ship_y;
+
+    // 2. Find Nearest Asteroid for AI Targeting & Threat Avoidance
     int nearest_idx = -1;
-    int min_dist_sq = 9999999;
+    float min_dist = 999999.0f;
+    float repel_x = 0.0f;
+    float repel_y = 0.0f;
+    bool under_threat = false;
+
     for (int i = 0; i < MAX_ASTEROIDS; i++) {
         if (asteroids[i].active) {
-            int dx = asteroids[i].x - SHIP_X;
-            int dy = asteroids[i].y - SHIP_Y;
-            int dist_sq = dx * dx + dy * dy;
-            if (dist_sq < min_dist_sq) {
-                min_dist_sq = dist_sq;
+            float dx = (float)(asteroids[i].x - SHIP_X);
+            float dy = (float)(asteroids[i].y - SHIP_Y);
+            
+            // Screen wrap distance correction
+            if (dx > 160) dx -= 320;
+            if (dx < -160) dx += 320;
+            if (dy > 120) dy -= 240;
+            if (dy < -120) dy += 240;
+
+            float dist = isqrt((int)(dx * dx + dy * dy));
+            if (dist < 1.0f) dist = 1.0f;
+
+            if (dist < min_dist) {
+                min_dist = dist;
                 nearest_idx = i;
+            }
+
+            // Threat repulsion: if within 55 pixels, push away
+            if (dist < 55.0f) {
+                under_threat = true;
+                float force = (55.0f - dist) / dist;
+                repel_x -= dx * force;
+                repel_y -= dy * force;
             }
         }
     }
 
-    // AI logic: turn towards the nearest asteroid
-    if (nearest_idx != -1) {
-        int target_x = asteroids[nearest_idx].x;
-        int target_y = asteroids[nearest_idx].y;
-        int to_ast_x = target_x - SHIP_X;
-        int to_ast_y = target_y - SHIP_Y;
+    // Determine target vector
+    float target_dx = 0.0f;
+    float target_dy = 0.0f;
+    if (under_threat) {
+        target_dx = repel_x;
+        target_dy = repel_y;
+    } else if (nearest_idx != -1) {
+        // Hunt the nearest asteroid
+        float dx = (float)(asteroids[nearest_idx].x - SHIP_X);
+        float dy = (float)(asteroids[nearest_idx].y - SHIP_Y);
+        if (dx > 160) dx -= 320;
+        if (dx < -160) dx += 320;
+        if (dy > 120) dy -= 240;
+        if (dy < -120) dy += 240;
+        
+        target_dx = dx;
+        target_dy = dy;
+    }
 
-        // Find angle that maximizes dot product (cos_a * to_ast_x + sin_a * to_ast_y)
+    bool thrusting = false;
+
+    if (nearest_idx != -1) {
+        // Find angle that maximizes dot product with target vector
         int best_angle = 0;
-        int max_dot = -9999999;
+        float max_dot = -9999999.0f;
         for (int a = 0; a < 16; a++) {
-            int dot = to_ast_x * COS16[a] + to_ast_y * SIN16[a];
+            float dot = target_dx * COS16[a] + target_dy * SIN16[a];
             if (dot > max_dot) {
                 max_dot = dot;
                 best_angle = a;
             }
         }
 
-        // Slowly turn towards target angle
+        // Rotate ship towards best_angle
         if (ship_angle != best_angle) {
-            // Find shortest turn direction
             int diff = (best_angle - ship_angle + 16) % 16;
             if (diff < 8) {
                 ship_angle = (ship_angle + 1) % 16;
@@ -127,18 +182,56 @@ void play_asteroids(uint8_t *buffer) {
             }
         }
 
-        // Shoot if facing target
-        if (ship_angle == best_angle && shoot_cooldown <= 0) {
+        // Apply thrust if aligned
+        int angle_diff = abs(ship_angle - best_angle);
+        if (angle_diff > 8) angle_diff = 16 - angle_diff;
+        
+        if (angle_diff <= 2) {
+            if (under_threat) {
+                // Flee!
+                ship_vx += (COS16[ship_angle] / 128.0f) * 0.45f;
+                ship_vy += (SIN16[ship_angle] / 128.0f) * 0.45f;
+                thrusting = true;
+            } else if (min_dist > 80.0f) {
+                // Move closer to target
+                ship_vx += (COS16[ship_angle] / 128.0f) * 0.25f;
+                ship_vy += (SIN16[ship_angle] / 128.0f) * 0.25f;
+                thrusting = true;
+            }
+        }
+
+        // Shoot if aligned with the actual nearest asteroid
+        float ast_dx = (float)(asteroids[nearest_idx].x - SHIP_X);
+        float ast_dy = (float)(asteroids[nearest_idx].y - SHIP_Y);
+        if (ast_dx > 160) ast_dx -= 320;
+        if (ast_dx < -160) ast_dx += 320;
+        if (ast_dy > 120) ast_dy -= 240;
+        if (ast_dy < -120) ast_dy += 240;
+        
+        int ast_angle = 0;
+        float max_ast_dot = -9999999.0f;
+        for (int a = 0; a < 16; a++) {
+            float dot = ast_dx * COS16[a] + ast_dy * SIN16[a];
+            if (dot > max_ast_dot) {
+                max_ast_dot = dot;
+                ast_angle = a;
+            }
+        }
+
+        int ast_angle_diff = abs(ship_angle - ast_angle);
+        if (ast_angle_diff > 8) ast_angle_diff = 16 - ast_angle_diff;
+
+        if (ast_angle_diff <= 1 && shoot_cooldown <= 0) {
             // Spawn bullet
             for (int i = 0; i < MAX_BULLETS; i++) {
                 if (!bullets[i].active) {
                     bullets[i].active = true;
                     bullets[i].x = SHIP_X + (COS16[ship_angle] * 6) / 128;
                     bullets[i].y = SHIP_Y + (SIN16[ship_angle] * 6) / 128;
-                    bullets[i].dx = (COS16[ship_angle] * 4) / 128;
-                    bullets[i].dy = (SIN16[ship_angle] * 4) / 128;
-                    bullets[i].life = 45; // lives for 45 frames
-                    shoot_cooldown = 15;  // cooldown
+                    bullets[i].dx = (COS16[ship_angle] * 4) / 128 + (int)ship_vx;
+                    bullets[i].dy = (SIN16[ship_angle] * 4) / 128 + (int)ship_vy;
+                    bullets[i].life = 45;
+                    shoot_cooldown = 12; // cooldown
                     break;
                 }
             }
@@ -146,6 +239,14 @@ void play_asteroids(uint8_t *buffer) {
     }
 
     if (shoot_cooldown > 0) shoot_cooldown--;
+
+    // Draw flickering thrust flame
+    if (thrusting && (get_rand() % 2 == 0)) {
+        int back_angle = (ship_angle + 8) % 16;
+        int fx = SHIP_X + (COS16[back_angle] * 6) / 128;
+        int fy = SHIP_Y + (SIN16[back_angle] * 6) / 128;
+        draw_rect(buffer, fx - 1, fy - 1, fx + 1, fy + 1, 3); // orange/yellow flame
+    }
 
     // 3. Draw & Update Ship (White 7)
     int tip_x = SHIP_X + (COS16[ship_angle] * 8) / 128;
