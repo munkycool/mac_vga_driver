@@ -139,23 +139,37 @@ void play_happy(uint8_t *buf, int frame) {
     draw_happy_cloud(buf, cx1, 40);
     draw_happy_cloud(buf, cx2, 70);
 
+    // Precalculate mountain/hill horizons
+    int h1_arr[320];
+    int h2_arr[320];
+    for (int x = 0; x < 320; x++) {
+        h1_arr[x] = 142 + (int)(12.0f * sinf((float)x * 0.015f + 1.2f));
+        h2_arr[x] = 172 + (int)(16.0f * sinf((float)x * 0.011f));
+    }
+
     // 4. Hill 1 (Background, Dark Green/Blue dither)
     for (int x = 0; x < 320; x++) {
-        int hy = 142 + (int)(12.0f * sinf((float)x * 0.015f + 1.2f));
+        int hy = h1_arr[x];
+        if (hy < 0) hy = 0;
+        if (hy >= 240) hy = 240;
         for (int y = hy; y < 240; y++) {
             int bayer = art_bayer4_at(x, y);
             uint8_t col = (bayer < 6) ? 0 : 2; // Green/Black dither
-            draw_pixel(buf, x, y, col);
+            uint8_t pixel = col | 0x08;
+            buf[y * 320 + x] = (pixel << 4) | pixel;
         }
     }
 
     // 5. Hill 2 (Foreground, Bright Green/Yellow dither)
     for (int x = 0; x < 320; x++) {
-        int hy = 172 + (int)(16.0f * sinf((float)x * 0.011f));
+        int hy = h2_arr[x];
+        if (hy < 0) hy = 0;
+        if (hy >= 240) hy = 240;
         for (int y = hy; y < 240; y++) {
             int bayer = art_bayer4_at(x, y);
             uint8_t col = (bayer < 5) ? 3 : 2; // Green/Yellow dither
-            draw_pixel(buf, x, y, col);
+            uint8_t pixel = col | 0x08;
+            buf[y * 320 + x] = (pixel << 4) | pixel;
         }
     }
 
@@ -163,7 +177,7 @@ void play_happy(uint8_t *buf, int frame) {
     static const int fx[5] = {45, 105, 165, 225, 285};
     static const uint8_t fcol[5] = {1, 5, 1, 5, 1}; // Red (1) and Magenta (5)
     for (int i = 0; i < 5; i++) {
-        int hy = 172 + (int)(16.0f * sinf((float)fx[i] * 0.011f));
+        int hy = h2_arr[fx[i]];
         draw_flower(buf, fx[i], hy, frame, fcol[i]);
     }
 
@@ -232,12 +246,13 @@ void init_happy_bd() {
 void play_happy_bd(uint8_t *buf, int frame) {
     // 1. Sky: Dark night sky dither (Blue 4 to Black 0)
     for (int y = 0; y < 150; y++) {
-        int d = y / 10; // 0 to 14
-        if (d > 15) d = 15;
+        int d = (y * 16) / 150;
+        uint8_t *row = &buf[y * 320];
         for (int x = 0; x < 320; x++) {
             int t = art_bayer4_at(x, y);
             uint8_t col = (d >= t) ? 4 : 0; // Blue (4) to Black (0)
-            draw_pixel(buf, x, y, col);
+            uint8_t pixel = col | 0x08;
+            row[x] = (pixel << 4) | pixel;
         }
     }
 
@@ -259,8 +274,6 @@ void play_happy_bd(uint8_t *buf, int frame) {
     }
 
     // 3. Moon breathing (calm, pulsing moon in center)
-    // Breathing calculation: 8 second cycle (approx 530 frames at 66.7Hz)
-    // 530 frames = 2 * PI / 0.012f
     float breath = sinf((float)frame * 0.012f);
     int r = 18 + (int)(6.0f * breath); // Radius ranges from 12 to 24
     int cx = 160;
@@ -284,10 +297,16 @@ void play_happy_bd(uint8_t *buf, int frame) {
     }
 
     // 4. Ocean waves at bottom (y = 145 to 240)
+    int wave_y_arr[320];
     for (int x = 0; x < 320; x++) {
-        // Wave horizon
-        int wave_y = 145 + (int)(4.0f * sinf((float)x * 0.03f + (float)frame * 0.02f) +
-                                2.0f * cosf((float)x * 0.07f - (float)frame * 0.04f));
+        wave_y_arr[x] = 145 + (int)(4.0f * sinf((float)x * 0.03f + (float)frame * 0.02f) +
+                                    2.0f * cosf((float)x * 0.07f - (float)frame * 0.04f));
+    }
+
+    for (int x = 0; x < 320; x++) {
+        int wave_y = wave_y_arr[x];
+        if (wave_y < 0) wave_y = 0;
+        if (wave_y >= 240) wave_y = 240;
         for (int y = wave_y; y < 240; y++) {
             // Gradient dither for deep sea (Cyan 6 to Blue 4)
             int dist = y - wave_y;
@@ -305,7 +324,8 @@ void play_happy_bd(uint8_t *buf, int frame) {
                     col = 6; // Cyan highlight
                 }
             }
-            draw_pixel(buf, x, y, col);
+            uint8_t pixel = col | 0x08;
+            buf[y * 320 + x] = (pixel << 4) | pixel;
         }
     }
 
@@ -354,10 +374,12 @@ void play_happy_mdd(uint8_t *buf, int frame) {
             col_a = 5; col_b = 3; // Magenta to Yellow/Orange
             factor = ((y - 85) * 16) / 55;
         }
+        uint8_t *row = &buf[y * 320];
         for (int x = 0; x < 320; x++) {
             int t = art_bayer4_at(x, y);
             uint8_t col = (t < factor) ? col_b : col_a;
-            draw_pixel(buf, x, y, col);
+            uint8_t pixel = col | 0x08;
+            row[x] = (pixel << 4) | pixel;
         }
     }
 
@@ -378,23 +400,37 @@ void play_happy_mdd(uint8_t *buf, int frame) {
         draw_rect(buf, (rx1+rx2)/2, (ry1+ry2)/2, (rx1+rx2)/2, (ry1+ry2)/2, 3);
     }
 
+    // Precompute profile
+    int my_arr[320];
+    int hy_arr[320];
+    for (int x = 0; x < 320; x++) {
+        my_arr[x] = 120 + (int)(16.0f * sinf((float)x * 0.015f + 0.8f) + 5.0f * cosf((float)x * 0.035f));
+        hy_arr[x] = 165 + (int)(10.0f * cosf((float)x * 0.012f - 0.5f));
+    }
+
     // 3. Midground Mountains (Dark Blue 4 dithered with Black 0)
     for (int x = 0; x < 320; x++) {
-        int my = 120 + (int)(16.0f * sinf((float)x * 0.015f + 0.8f) + 5.0f * cosf((float)x * 0.035f));
+        int my = my_arr[x];
+        if (my < 0) my = 0;
+        if (my >= 240) my = 240;
         for (int y = my; y < 240; y++) {
             int t = art_bayer4_at(x, y);
             uint8_t col = (t < 5) ? 0 : 4;
-            draw_pixel(buf, x, y, col);
+            uint8_t pixel = col | 0x08;
+            buf[y * 320 + x] = (pixel << 4) | pixel;
         }
     }
 
     // 4. Foreground Green Hills (Green 2 dithered with Yellow 3)
     for (int x = 0; x < 320; x++) {
-        int hy = 165 + (int)(10.0f * cosf((float)x * 0.012f - 0.5f));
+        int hy = hy_arr[x];
+        if (hy < 0) hy = 0;
+        if (hy >= 240) hy = 240;
         for (int y = hy; y < 240; y++) {
             int t = art_bayer4_at(x, y);
             uint8_t col = (t < 6) ? 2 : 3;
-            draw_pixel(buf, x, y, col);
+            uint8_t pixel = col | 0x08;
+            buf[y * 320 + x] = (pixel << 4) | pixel;
         }
     }
 
@@ -429,10 +465,12 @@ void init_happy_ocd() {
 void play_happy_ocd(uint8_t *buf, int frame) {
     // 1. Background sky/rain scene: Navy Blue (4) and Black (0)
     for (int y = 0; y < 240; y++) {
+        uint8_t *row = &buf[y * 320];
         for (int x = 0; x < 320; x++) {
             int t = art_bayer4_at(x, y);
             uint8_t col = (t < 3) ? 4 : 0; // Soft navy blue dither
-            draw_pixel(buf, x, y, col);
+            uint8_t pixel = col | 0x08;
+            row[x] = (pixel << 4) | pixel;
         }
     }
 
@@ -507,14 +545,21 @@ void init_happy_mania() {
 }
 
 void play_happy_mania(uint8_t *buf, int frame) {
+    // Precompute aurora profile once per column x to avoid inner loop sinf/cosf
+    int target_y[320];
+    for (int x = 0; x < 320; x++) {
+        float wave1 = sinf((float)x * 0.012f + (float)frame * 0.006f) * 16.0f;
+        float wave2 = cosf((float)x * 0.024f - (float)frame * 0.003f) * 8.0f;
+        target_y[x] = 65 + (int)(wave1 + wave2);
+    }
+
     // 1. Sky: Quiet night sky with a slowly waving Aurora Borealis (Cyan 6 / Green 2)
     for (int y = 0; y < 160; y++) {
+        uint8_t *row = &buf[y * 320];
+        int d_sky = y / 10;
         for (int x = 0; x < 320; x++) {
-            // Waving math
-            float wave1 = sinf((float)x * 0.012f + (float)frame * 0.006f) * 16.0f;
-            float wave2 = cosf((float)x * 0.024f - (float)frame * 0.003f) * 8.0f;
-            int target_y = 65 + (int)(wave1 + wave2);
-            int dist = abs(y - target_y);
+            int ty = target_y[x];
+            int dist = abs(y - ty);
             
             uint8_t col = 0; // Black space
             if (dist < 28) {
@@ -526,11 +571,11 @@ void play_happy_mania(uint8_t *buf, int frame) {
             }
             if (col == 0) {
                 // Background navy gradient
-                int d = y / 10;
                 int t = art_bayer4_at(x, y);
-                col = (d >= t) ? 4 : 0;
+                col = (d_sky >= t) ? 4 : 0;
             }
-            draw_pixel(buf, x, y, col);
+            uint8_t pixel = col | 0x08;
+            row[x] = (pixel << 4) | pixel;
         }
     }
 
@@ -545,10 +590,12 @@ void play_happy_mania(uint8_t *buf, int frame) {
 
     // 3. Ground meadow (Dark Green 2)
     for (int y = 160; y < 240; y++) {
+        uint8_t *row = &buf[y * 320];
         for (int x = 0; x < 320; x++) {
             int t = art_bayer4_at(x, y);
             uint8_t col = (t < 5) ? 2 : 0; // quiet green/black dither
-            draw_pixel(buf, x, y, col);
+            uint8_t pixel = col | 0x08;
+            row[x] = (pixel << 4) | pixel;
         }
     }
 
@@ -565,6 +612,145 @@ void play_happy_mania(uint8_t *buf, int frame) {
     draw_string_centered_multiline(buf, MANIA_QUOTES[quote_idx], 160, 185, 2, 3); // Yellow - 3 for warmth
 }
 
+void init_happy_mania_sunrise() {
+    // Purely frame-based sunrise animation
+}
+
+void play_happy_mania_sunrise(uint8_t *buf, int frame) {
+    // 1. Sky: Vibrant sunrise (Blue 4 -> Magenta 5 -> Yellow 3 -> White 7)
+    for (int y = 0; y < 180; y++) {
+        uint8_t col_a, col_b;
+        int factor;
+        if (y < 60) {
+            col_a = 4; col_b = 5; // Blue to Magenta
+            factor = (y * 16) / 60;
+        } else if (y < 130) {
+            col_a = 5; col_b = 3; // Magenta to Yellow
+            factor = ((y - 60) * 16) / 70;
+        } else {
+            col_a = 3; col_b = 7; // Yellow to White (near horizon)
+            factor = ((y - 130) * 16) / 50;
+        }
+        uint8_t *row = &buf[y * 320];
+        for (int x = 0; x < 320; x++) {
+            int t = art_bayer4_at(x, y);
+            uint8_t col = (t < factor) ? col_b : col_a;
+            uint8_t pixel = col | 0x08;
+            row[x] = (pixel << 4) | pixel;
+        }
+    }
+
+    // 2. Rising Golden Sun
+    int sun_y = 150 - (int)(25.0f * sinf((float)frame * 0.003f));
+    draw_circle(buf, 160, sun_y, 30, 3); // Sun body
+    draw_circle(buf, 160, sun_y, 22, 7); // Hot core
+
+    // 3. Calm Blue Sea
+    for (int y = 180; y < 240; y++) {
+        uint8_t *row = &buf[y * 320];
+        for (int x = 0; x < 320; x++) {
+            int t = art_bayer4_at(x, y);
+            uint8_t col = (t < 8) ? 4 : 6; // Blue/Cyan dither
+            uint8_t pixel = col | 0x08;
+            row[x] = (pixel << 4) | pixel;
+        }
+    }
+
+    // 4. Grounding Quotes for Sunrise (Fresh start, gentle energy)
+    const char *SUNRISE_QUOTES[] = {
+        "A NEW BEGINNING.",
+        "GENTLE ENERGY.",
+        "CHANNEL THE LIGHT.",
+        "STAY CENTERED.",
+        "PEACE IN MOTION.",
+        "YOU ARE BALANCED."
+    };
+    int quote_idx = (frame / 300) % 6;
+    draw_string_centered_multiline(buf, SUNRISE_QUOTES[quote_idx], 160, 205, 2, 7);
+}
+
+void init_happy_mania_clouds() {
+    // Floating clouds
+}
+
+void play_happy_mania_clouds(uint8_t *buf, int frame) {
+    // 1. Soft Blue Sky
+    for (int y = 0; y < 240; y++) {
+        uint8_t *row = &buf[y * 320];
+        for (int x = 0; x < 320; x++) {
+            int t = art_bayer4_at(x, y);
+            uint8_t col = (t < 4) ? 6 : 4; // Cyan/Blue soft sky
+            uint8_t pixel = col | 0x08;
+            row[x] = (pixel << 4) | pixel;
+        }
+    }
+
+    // 2. Drifting White Clouds (Thoughts passing by)
+    for (int i = 0; i < 5; i++) {
+        int cx = (frame / (2 + i) + i * 80) % 440 - 60;
+        int cy = 40 + i * 30;
+        if (cx > -60 && cx < 320) {
+            draw_circle(buf, cx, cy, 15, 7);
+            draw_circle(buf, cx - 12, cy + 5, 10, 7);
+            draw_circle(buf, cx + 12, cy + 5, 10, 7);
+        }
+    }
+
+    // 3. Grounding Message
+    const char *CLOUD_QUOTES[] = {
+        "THOUGHTS DRIFT BY.",
+        "YOU ARE THE SKY.",
+        "OBSERVE, DON'T CHASE.",
+        "CALM CLARITY.",
+        "REMAIN STILL.",
+        "LET IT FLOW."
+    };
+    int quote_idx = (frame / 300) % 6;
+    draw_string_centered_multiline(buf, CLOUD_QUOTES[quote_idx], 160, 180, 2, 0); // Black text for contrast
+}
+
+void init_happy_mania_gems() {
+    // Floating gems
+}
+
+void play_happy_mania_gems(uint8_t *buf, int frame) {
+    // 1. Deep Space Background
+    for (int y = 0; y < 240; y++) {
+        uint8_t *row = &buf[y * 320];
+        for (int x = 0; x < 320; x++) {
+            int t = art_bayer4_at(x, y);
+            uint8_t col = (t < 2) ? 4 : 0; // Dark navy/black space
+            uint8_t pixel = col | 0x08;
+            row[x] = (pixel << 4) | pixel;
+        }
+    }
+
+    // 2. Floating Colorful Gems (Chaos Emerald reference)
+    uint8_t gem_colors[] = {1, 2, 3, 4, 5, 6, 7}; // Red, Green, Yellow, Blue, Magenta, Cyan, White
+    for (int i = 0; i < 7; i++) {
+        float angle = (float)frame * 0.015f + i * 0.9f;
+        int gx = 160 + (int)(100.0f * cosf(angle));
+        int gy = 100 + (int)(60.0f * sinf(angle));
+        
+        // Draw diamond-like gem
+        draw_rect(buf, gx - 2, gy - 4, gx + 2, gy + 4, gem_colors[i]);
+        draw_rect(buf, gx - 4, gy - 2, gx + 4, gy + 2, gem_colors[i]);
+        draw_pixel(buf, gx, gy, 7); // Shimmer center
+    }
+
+    // 3. Grounding Message
+    const char *GEM_QUOTES[] = {
+        "FIND YOUR CORE.",
+        "CALM YOUR MIND.",
+        "COLLECT YOUR THOUGHTS.",
+        "STRENGTH IN STILLNESS.",
+        "VIBRANT BUT CALM.",
+        "YOU ARE WHOLE."
+    };
+    int quote_idx = (frame / 300) % 6;
+    draw_string_centered_multiline(buf, GEM_QUOTES[quote_idx], 160, 185, 2, 7);
+}
+
 void init_happy_psychosis() {
     // Purely frame-based grounded cabin animation
 }
@@ -572,19 +758,23 @@ void init_happy_psychosis() {
 void play_happy_psychosis(uint8_t *buf, int frame) {
     // 1. Sky: Quiet midnight blue (4)
     for (int y = 0; y < 160; y++) {
+        uint8_t *row = &buf[y * 320];
         for (int x = 0; x < 320; x++) {
             int t = art_bayer4_at(x, y);
             uint8_t col = (t < 2) ? 4 : 0;
-            draw_pixel(buf, x, y, col);
+            uint8_t pixel = col | 0x08;
+            row[x] = (pixel << 4) | pixel;
         }
     }
     
     // 2. Ground (Green 2 and Black 0 dither)
     for (int y = 160; y < 240; y++) {
+        uint8_t *row = &buf[y * 320];
         for (int x = 0; x < 320; x++) {
             int t = art_bayer4_at(x, y);
             uint8_t col = (t < 6) ? 2 : 0;
-            draw_pixel(buf, x, y, col);
+            uint8_t pixel = col | 0x08;
+            row[x] = (pixel << 4) | pixel;
         }
     }
 
@@ -652,4 +842,3 @@ void play_happy_psychosis(uint8_t *buf, int frame) {
     int quote_idx = (frame / 300) % 6;
     draw_string_centered_multiline(buf, PSY_QUOTES[quote_idx], 180, 185, 1, 7); // White text inside box
 }
-
