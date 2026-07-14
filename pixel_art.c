@@ -169,22 +169,40 @@ void play_synthwave(uint8_t *buf, int frame) {
     // ── TWINKLING STARS ───────────────────────────────────────────────────────
     draw_stars(buf, frame);
 
-    // ── SUN — dithered concentric rings for smooth gradient ──────────────────
-    int sun_cx = 160, sun_cy = 105;
-    for (int r = 42; r >= 1; r--) {
-        uint8_t col;
-        if (r > 34) col = 7;       // white hot core outer edge
-        else if (r > 26) col = 3;  // yellow
-        else if (r > 16) col = 1;  // red-orange
-        else col = 5;               // deep magenta center
-        draw_circle(buf, sun_cx, sun_cy, r, col);
+    // ── SUN — dithered vertical gradient and retro widening gaps ─────────────
+    int sun_cx = 160, sun_cy = 105, sun_r = 42;
+    for (int y = sun_cy - sun_r; y <= sun_cy + sun_r; y++) {
+        int dy = y - sun_cy;
+        
+        // Widening horizontal scanline gaps in the lower half
+        if (dy > 0) {
+            if (dy % 8 < (dy / 9) + 1) {
+                continue;
+            }
+        }
+        
+        int dx_max = isqrt(sun_r * sun_r - dy * dy);
+        int y_rel = y - (sun_cy - sun_r); // 0 at top, 84 at bottom
+        
+        for (int x = sun_cx - dx_max; x <= sun_cx + dx_max; x++) {
+            int t = art_bayer4_at(x, y);
+            uint8_t col;
+            if (y_rel < 20) {
+                // White (7) to Yellow (3)
+                int val = y_rel * 16 / 20;
+                col = (val >= t) ? 3 : 7;
+            } else if (y_rel < 50) {
+                // Yellow (3) to Red (1)
+                int val = (y_rel - 20) * 16 / 30;
+                col = (val >= t) ? 1 : 3;
+            } else {
+                // Red (1) to Magenta (5)
+                int val = (y_rel - 50) * 16 / 34;
+                col = (val >= t) ? 5 : 1;
+            }
+            draw_pixel(buf, x, y, col);
+        }
     }
-    // Horizontal scan-line slots across lower half of sun
-    for (int y = sun_cy; y <= sun_cy + 42; y += 5) {
-        draw_rect(buf, sun_cx - 42, y, sun_cx + 42, y + 1, 0);
-    }
-    // Bright specular dot top
-    draw_circle(buf, sun_cx - 8, sun_cy - 14, 4, 7);
 
     // ── HORIZON GLOW ─────────────────────────────────────────────────────────
     draw_rect(buf, 0, 138, 319, 138, 7);
