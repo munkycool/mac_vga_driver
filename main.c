@@ -76,6 +76,10 @@ void init_screensaver(enum ProgramState state) {
         init_challenger();
     } else if (state == STATE_NINE_ELEVEN) {
         init_nine_eleven();
+    } else if (state == STATE_PINUP) {
+        init_pinup();
+    } else if (state == STATE_PRIDE) {
+        init_pride();
     } else if (state == STATE_SPLASH) {
         init_splash();
     }
@@ -286,6 +290,10 @@ int main() {
             play_challenger((uint8_t *)back_buffer, state_frame_counter);
         } else if (current_state == STATE_NINE_ELEVEN) {
             play_nine_eleven((uint8_t *)back_buffer, state_frame_counter);
+        } else if (current_state == STATE_PINUP) {
+            play_pinup((uint8_t *)back_buffer, state_frame_counter);
+        } else if (current_state == STATE_PRIDE) {
+            play_pride((uint8_t *)back_buffer, state_frame_counter);
         } else if (current_state == STATE_SPLASH) {
             play_splash((uint8_t *)back_buffer, state_frame_counter);
         }

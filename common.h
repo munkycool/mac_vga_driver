@@ -28,7 +28,7 @@
 #define PIN_BASE   7 
 
 // --- Deterministic State Machine ---
-#define NUM_STATES 30
+#define NUM_STATES 32
 #define SPLASH_PROB 3  // 1-in-SPLASH_PROB chance of boot splash
 enum ProgramState {
     STATE_VIDEO,
@@ -61,6 +61,8 @@ enum ProgramState {
     STATE_MARIO_SHOW,
     STATE_CHALLENGER,
     STATE_NINE_ELEVEN,
+    STATE_PINUP,
+    STATE_PRIDE,
     // NOTE: STATE_SPLASH is NOT in the shuffle bag – triggered separately
     STATE_SPLASH
 };
@@ -199,6 +201,14 @@ void play_fireplace(uint8_t *buffer, int frame_counter);
 // STATE_CHERRY_BLOSSOM
 void init_cherry_blossom();
 void play_cherry_blossom(uint8_t *buffer, int frame_counter);
+
+// STATE_PINUP
+void init_pinup();
+void play_pinup(uint8_t *buffer, int frame_counter);
+
+// STATE_PRIDE
+void init_pride();
+void play_pride(uint8_t *buffer, int frame_counter);
 
 // STATE_CYBERPUNK
 void init_cyberpunk();
