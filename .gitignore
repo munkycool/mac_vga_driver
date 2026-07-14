@@ -11,3 +11,5 @@ generated/
 *.uf2
 *.hex
 *.map
+*.o
+emulator/mac_vga_emulator
