@@ -80,6 +80,8 @@ void init_screensaver(enum ProgramState state) {
         init_pinup();
     } else if (state == STATE_PRIDE) {
         init_pride();
+    } else if (state == STATE_MINECRAFT) {
+        init_minecraft();
     } else if (state == STATE_SPLASH) {
         init_splash();
     }
@@ -296,6 +298,8 @@ int main() {
             play_pride((uint8_t *)back_buffer, state_frame_counter);
         } else if (current_state == STATE_XBOX_PRIDE) {
             play_xbox_pride((uint8_t *)back_buffer, state_frame_counter);
+        } else if (current_state == STATE_MINECRAFT) {
+            play_minecraft((uint8_t *)back_buffer, state_frame_counter);
         } else if (current_state == STATE_SPLASH) {
             play_splash((uint8_t *)back_buffer, state_frame_counter);
         }

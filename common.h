@@ -28,7 +28,7 @@
 #define PIN_BASE   7 
 
 // --- Deterministic State Machine ---
-#define NUM_STATES 32
+#define NUM_STATES 33
 #define SPLASH_PROB 3  // 1-in-SPLASH_PROB chance of boot splash
 enum ProgramState {
     STATE_XBOX_PRIDE,
@@ -63,6 +63,7 @@ enum ProgramState {
     STATE_NINE_ELEVEN,
     STATE_PINUP,
     STATE_PRIDE,
+    STATE_MINECRAFT,
     // NOTE: STATE_SPLASH is NOT in the shuffle bag – triggered separately
     STATE_SPLASH
 };
@@ -278,5 +279,9 @@ void play_nine_eleven(uint8_t *buffer, int frame_counter);
 // STATE_SPLASH (boot-time, not in shuffle bag)
 void init_splash();
 void play_splash(uint8_t *buffer, int frame_counter);
+
+// STATE_MINECRAFT
+void init_minecraft();
+void play_minecraft(uint8_t *buffer, int frame_counter);
 
 #endif // COMMON_H
