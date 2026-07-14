@@ -548,10 +548,14 @@ void play_minecraft(uint8_t *buffer, int frame_counter) {
         mobs[i].z = get_terrain_height(mobs[i].x, mobs[i].y);
     }
     
-    // --- 4. RENDER VOXEL WORLD ---
+    // --- 4. RENDER VOXEL WORLD (Two-Pass: Walls + Floor/Ceiling tops) ---
     for (int col = 0; col < 160; col++) {
         z_depth[col] = 999.0f;
     }
+
+    // --- PASS 1: Per-column DDA wall raycaster (vertical side faces) ---
+    // We store the per-column filled mask for use in pass 2
+    static bool filled_mask[160][120];
     
     for (int col = 0; col < 160; col++) {
         float fov = 1.0f;
@@ -621,54 +625,35 @@ void play_minecraft(uint8_t *buffer, int frame_counter) {
                 
                 // Cloud layer drifts dynamically
                 if (z == 7) {
-                    int cloud_x = (map_x + (int)cloud_offset) % WORLD_X;
-                    if (cloud_x % 8 >= 4) {
-                        block = 7; // White cloud block
-                    } else {
-                        block = 0;
-                    }
+                    int cloud_xi = ((map_x + (int)cloud_offset) % WORLD_X + WORLD_X) % WORLD_X;
+                    block = (cloud_xi % 8 >= 4) ? 7 : 0;
                 }
                 
                 if (block != 0) {
                     float scale_y = 65.0f;
-                    int y_bottom = 60 - (int)(((float)z - player_z) * scale_y / corr_dist);
-                    int y_top = 60 - (int)(((float)z + 1.0f - player_z) * scale_y / corr_dist);
+                    int y_bottom = 60 - (int)(((float)z     - player_z) * scale_y / corr_dist);
+                    int y_top    = 60 - (int)(((float)z + 1 - player_z) * scale_y / corr_dist);
                     
                     if (y_top < 0) y_top = 0;
                     if (y_bottom >= 120) y_bottom = 119;
                     
                     if (y_top <= y_bottom) {
-                        if (z_depth[col] > dist) {
-                            z_depth[col] = dist;
-                        }
+                        if (z_depth[col] > dist) z_depth[col] = dist;
                         
-                        int shading = hit_side;
-                        if (corr_dist > 12.0f) {
-                            shading = 4; // Fog
-                        } else if (corr_dist > 7.0f) {
-                            shading = 3;
-                        }
+                        int shading = hit_side; // 0 = bright face, 1 = dark face
+                        if (corr_dist > 12.0f) shading = 4;
+                        else if (corr_dist > 7.0f) shading = 3;
                         
-                        // Smart Grass block styling: green top, brown sides
-                        uint8_t draw_color = block;
-                        
-                        int slice_start = -1;
                         for (int y = y_top; y <= y_bottom; y++) {
                             if (!filled[y]) {
-                                if (slice_start == -1) slice_start = y;
                                 filled[y] = true;
                                 filled_count++;
                                 
-                                // Apply grass side styling
-                                if (block == 2 && z == (int)get_terrain_height((float)map_x, (float)map_y) - 1) {
-                                    // Top of slice is green grass, bottom is dirt (brown)
-                                    if (y > y_top + (y_bottom - y_top) / 4) {
-                                        draw_color = 6; // Dirt
-                                    } else {
-                                        draw_color = 2; // Grass
-                                    }
-                                } else {
-                                    draw_color = block;
+                                // Grass block: green cap, dirt sides
+                                uint8_t draw_color = block;
+                                if (block == BLOCK_GRASS) {
+                                    int top_band = y_bottom - y_top;
+                                    draw_color = (top_band > 0 && y <= y_top + top_band / 4) ? BLOCK_GRASS : BLOCK_DIRT;
                                 }
                                 
                                 draw_retro_column(buffer, col, y, y, draw_color, shading);
@@ -680,22 +665,108 @@ void play_minecraft(uint8_t *buffer, int frame_counter) {
             if (filled_count >= 120) break;
         }
         
-        // Draw sky background
-        int sky_start = -1;
+        // Copy filled mask for this column for pass 2
         for (int y = 0; y < 120; y++) {
-            if (!filled[y]) {
-                if (sky_start == -1) sky_start = y;
-            } else {
-                if (sky_start != -1) {
-                    draw_retro_column(buffer, col, sky_start, y - 1, sky_color, 0);
-                    sky_start = -1;
-                }
-            }
-        }
-        if (sky_start != -1) {
-            draw_retro_column(buffer, col, sky_start, 119, sky_color, 0);
+            filled_mask[col][y] = filled[y];
         }
     }
+    
+    // --- PASS 2: Per-pixel floor/ceiling raycasting (horizontal block tops) ---
+    // For each screen column and each unfilled pixel, project the pixel's screen
+    // coordinate back into world space to find which block top it lies on.
+    //
+    // Screen row y maps to a vertical angle relative to horizon (row 60 = eye level).
+    // For row y below horizon: it's a floor pixel.
+    // For row y above horizon: it's a ceiling pixel.
+    //
+    // Formula (standard floor-casting):
+    //   rowDirection = (y - screenHalf) / (scale_y)
+    //   At world-Z layer zfloor: distance = (zfloor - player_z) / rowDir  (perpendicular)
+    //   Then world pos = player + dir * distance (corrected for angle)
+    
+    float fov_scale = 1.0f / 160.0f;
+    float scale_y = 65.0f;
+    
+    // --- PASS 2: Per-pixel floor/ceiling projection (horizontal block tops) ---
+    // Pre-compute per-column ray cos/sin and cos-correction factor (160 trig calls total,
+    // not 160*120). Loop row-first so we only multiply/divide per pixel, not trig.
+    static float ray_cos[160], ray_sin[160], ray_cos_corr[160];
+    for (int col = 0; col < 160; col++) {
+        float ra = cam_angle + ((float)col - 80.0f) * fov_scale;
+        ray_cos[col] = cosf(ra);
+        ray_sin[col] = sinf(ra);
+        ray_cos_corr[col] = cosf(ra - cam_angle); // fish-eye correction
+    }
+
+    for (int y = 0; y < 120; y++) {
+        float row_offset = (float)(y - 60);
+        if (row_offset == 0.0f) {
+            // Draw sky horizon line
+            for (int col = 0; col < 160; col++) {
+                if (!filled_mask[col][y]) draw_retro_column(buffer, col, y, y, sky_color, 0);
+            }
+            continue;
+        }
+
+        float denom = -row_offset;
+
+        for (int col = 0; col < 160; col++) {
+            if (filled_mask[col][y]) continue;
+
+            float ccos = ray_cos_corr[col];
+            if (ccos <= 0.0001f) { // avoid div by zero from very oblique rays
+                draw_retro_column(buffer, col, y, y, (y < 60) ? sky_color : 0, 0);
+                continue;
+            }
+
+            bool pixel_filled = false;
+
+            // Search from top Z layer down to find topmost visible block face
+            for (int z = WORLD_Z - 1; z >= 0; z--) {
+                float z_diff = (float)(z + 1) - player_z; // height of block's top face
+                float perp_dist = z_diff * scale_y / denom;
+                if (perp_dist <= 0.05f) continue;
+
+                float true_dist = perp_dist / ccos;
+                if (true_dist > 18.0f) continue;
+                if (true_dist > z_depth[col] + 0.15f) continue; // occluded by wall
+
+                int bx = (int)(player_x + ray_cos[col] * true_dist);
+                int by = (int)(player_y + ray_sin[col] * true_dist);
+
+                if ((unsigned)bx >= (unsigned)WORLD_X || (unsigned)by >= (unsigned)WORLD_Y) continue;
+
+                uint8_t block = world[bx][by][z];
+                if (block == BLOCK_AIR || block == BLOCK_WATER) continue;
+
+                // Only draw exposed tops (block above must be air)
+                uint8_t above = (z + 1 < WORLD_Z) ? world[bx][by][z + 1] : BLOCK_AIR;
+                if (above != BLOCK_AIR) continue;
+
+                // Shade: tops lit from sky, checkerboard darkening for texture
+                int shading = 0;
+                if (true_dist > 12.0f) shading = 4;
+                else if (true_dist > 7.0f) shading = 3;
+                else if ((bx ^ by) & 1) shading = 1; // subtle checker pattern
+
+                uint8_t draw_color = block;
+                if (block == BLOCK_GRASS || block == BLOCK_LEAVES) draw_color = BLOCK_GRASS;
+                if (block == BLOCK_STONE) draw_color = BLOCK_STONE;
+
+                draw_retro_column(buffer, col, y, y, draw_color, shading);
+                if (z_depth[col] > true_dist) z_depth[col] = true_dist;
+                pixel_filled = true;
+                break;
+            }
+
+            if (!pixel_filled) {
+                // Sky above horizon, void black below
+                draw_retro_column(buffer, col, y, y, (y < 60) ? sky_color : 0, 0);
+            }
+        }
+    }
+
+
     
     // --- 5. RENDER BILLBOARD MOBS ---
     for (int i = 0; i < MAX_MOBS; i++) {
