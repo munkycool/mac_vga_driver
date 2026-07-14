@@ -42,7 +42,7 @@ add_executable(mac_vga
 
 pico_generate_pio_header(mac_vga ${CMAKE_CURRENT_LIST_DIR}/vga.pio)
 
-target_link_libraries(mac_vga pico_stdlib hardware_pio hardware_dma hardware_clocks)
+target_link_libraries(mac_vga pico_stdlib pico_status_led pico_multicore hardware_pio hardware_dma hardware_clocks)
 
 pico_enable_stdio_usb(mac_vga 1)
 pico_enable_stdio_uart(mac_vga 0)
