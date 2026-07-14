@@ -119,14 +119,14 @@ static const uint8_t TEXTURES[18][8][8] = {
     },
     // Dirt (3)
     {
-        {3,1,3,3,1,3,0,3},
-        {1,3,1,0,3,1,3,1},
-        {3,1,3,3,1,3,1,3},
-        {3,3,1,3,0,3,3,1},
-        {1,3,0,3,3,1,3,3},
-        {3,1,3,1,3,3,1,3},
-        {3,3,1,3,1,3,3,0},
-        {0,3,3,1,3,0,3,3}
+        {2,1,2,2,1,2,0,2},
+        {1,2,1,0,2,1,2,1},
+        {2,1,2,2,1,2,1,2},
+        {2,2,1,2,0,2,2,1},
+        {1,2,0,2,2,1,2,2},
+        {2,1,2,1,2,2,1,2},
+        {2,2,1,2,1,2,2,0},
+        {0,2,2,1,2,0,2,2}
     },
     // Stone (4)
     {
@@ -141,24 +141,24 @@ static const uint8_t TEXTURES[18][8][8] = {
     },
     // Wood Trunk (5)
     {
-        {1,3,1,1,3,1,0,1},
-        {1,1,3,1,1,1,3,1},
-        {3,1,1,1,3,1,1,1},
-        {1,1,1,3,1,1,1,3},
-        {1,3,1,1,1,3,1,1},
-        {1,1,3,1,1,1,3,1},
-        {3,1,1,3,1,1,1,1},
-        {1,1,1,1,3,1,1,3}
+        {1,2,1,1,2,1,0,1},
+        {1,1,2,1,1,1,2,1},
+        {2,1,1,1,2,1,1,1},
+        {1,1,1,2,1,1,1,2},
+        {1,2,1,1,1,2,1,1},
+        {1,1,2,1,1,1,2,1},
+        {2,1,1,2,1,1,1,1},
+        {1,1,1,1,2,1,1,2}
     },
     // Wood Planks (6)
     {
-        {3,3,3,3,3,3,3,3},
-        {3,0,3,3,3,0,3,3},
-        {3,3,3,3,3,3,3,3},
+        {3,1,3,1,3,1,3,1},
+        {3,0,3,1,3,0,3,1},
+        {3,1,3,1,3,1,3,1},
         {0,0,0,0,0,0,0,0},
-        {3,3,3,3,3,3,3,3},
-        {3,3,3,0,3,3,3,0},
-        {3,3,3,3,3,3,3,3},
+        {1,3,1,3,1,3,1,3},
+        {1,3,0,3,1,3,0,3},
+        {1,3,1,3,1,3,1,3},
         {0,0,0,0,0,0,0,0}
     },
     // Leaves (7)
@@ -1207,6 +1207,8 @@ static void render_world(uint8_t *buffer) {
     // Scale factor
     fixed_t scale_y = TO_FP(130.0f);
 
+    fixed_t cam_z = player_z + TO_FP(1.62f);
+
     int sun_angle = (time_of_day * 512 / 2000) & 511;
     int moon_angle = (sun_angle + 256) & 511;
     int sun_elevation = INT_VAL(FP_MUL(sin_table[sun_angle], TO_FP(80.0f)));
@@ -1275,10 +1277,10 @@ static void render_world(uint8_t *buffer) {
 
                 if (block == BLOCK_AIR) {
                     // Check if block below is solid to cast its exposed top face (floor)
-                    if (z > 0 && z - 1 < INT_VAL(player_z)) {
+                    if (z > 0 && z - 1 < INT_VAL(cam_z)) {
                         uint8_t block_below = world[map_x][map_y][z - 1];
                         if (block_below != BLOCK_AIR && block_below != BLOCK_WATER) {
-                            fixed_t z_diff = (z << 16) - player_z;
+                            fixed_t z_diff = (z << 16) - cam_z;
                             int y_enter = y_center - INT_VAL(FP_DIV(FP_MUL(z_diff, scale_y), corr_d_enter));
                             int y_leave = y_center - INT_VAL(FP_DIV(FP_MUL(z_diff, scale_y), corr_d_leave));
 
@@ -1309,8 +1311,8 @@ static void render_world(uint8_t *buffer) {
                 } else {
                     // Block is solid. 
                     // Draw vertical walls face
-                    fixed_t z_bottom = (z << 16) - player_z;
-                    fixed_t z_top = ((z + 1) << 16) - player_z;
+                    fixed_t z_bottom = (z << 16) - cam_z;
+                    fixed_t z_top = ((z + 1) << 16) - cam_z;
 
                     int y_top = y_center - INT_VAL(FP_DIV(FP_MUL(z_top, scale_y), corr_d_enter));
                     int y_bottom = y_center - INT_VAL(FP_DIV(FP_MUL(z_bottom, scale_y), corr_d_enter));
@@ -1341,8 +1343,8 @@ static void render_world(uint8_t *buffer) {
                     }
 
                     // Check top face if below player
-                    if (z + 1 < INT_VAL(player_z)) {
-                        fixed_t z_diff = ((z + 1) << 16) - player_z;
+                    if (z + 1 < INT_VAL(cam_z)) {
+                        fixed_t z_diff = ((z + 1) << 16) - cam_z;
                         int y_enter = y_center - INT_VAL(FP_DIV(FP_MUL(z_diff, scale_y), corr_d_enter));
                         int y_leave = y_center - INT_VAL(FP_DIV(FP_MUL(z_diff, scale_y), corr_d_leave));
 
@@ -1446,6 +1448,8 @@ static void render_billboards(uint8_t *buffer) {
     int y_center = 120 + cam_pitch;
     fixed_t scale_y = TO_FP(130.0f);
 
+    fixed_t cam_z = player_z + TO_FP(1.62f);
+
     // 1. Render Mobs
     for (int i = 0; i < MAX_MOBS; i++) {
         if (!mobs[i].active) continue;
@@ -1469,9 +1473,9 @@ static void render_billboards(uint8_t *buffer) {
             mob_bob = sinf(mobs[i].state_timer * 0.4f) * 0.08f;
         }
 
-        fixed_t mz_bottom = mobs[i].z + TO_FP(mob_bob) - player_z;
+        fixed_t mz_bottom = mobs[i].z + TO_FP(mob_bob) - cam_z;
         float height_m = (mobs[i].type == MOB_ENDERMAN) ? 2.4f : ((mobs[i].type == MOB_CHICKEN) ? 0.7f : 1.7f);
-        fixed_t mz_top = mobs[i].z + TO_FP(mob_bob + height_m) - player_z;
+        fixed_t mz_top = mobs[i].z + TO_FP(mob_bob + height_m) - cam_z;
 
         int screen_y_bottom = y_center - INT_VAL(FP_DIV(FP_MUL(mz_bottom, scale_y), rx));
         int screen_y_top = y_center - INT_VAL(FP_DIV(FP_MUL(mz_top, scale_y), rx));
@@ -1491,7 +1495,6 @@ static void render_billboards(uint8_t *buffer) {
             if (sx < 0 || sx >= 320) continue;
             
             // Basic billboard column DDA occlusion check: 
-            // Simple depth culling
             int spr_col = ((sx - start_x) * mob_res_w) / mob_w;
             if (spr_col < 0 || spr_col >= mob_res_w) continue;
 
@@ -1531,7 +1534,7 @@ static void render_billboards(uint8_t *buffer) {
         if (rx < TO_FP(0.2f) || rx > TO_FP(18.0f)) continue;
 
         int screen_x = 160 + INT_VAL(FP_DIV(FP_MUL(ry, scale_y), rx));
-        fixed_t pz = particles[i].z - player_z;
+        fixed_t pz = particles[i].z - cam_z;
         int screen_y = y_center - INT_VAL(FP_DIV(FP_MUL(pz, scale_y), rx));
 
         if (screen_x >= 0 && screen_x < 320 && screen_y >= 0 && screen_y < 240) {
