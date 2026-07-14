@@ -568,41 +568,40 @@ void play_fireplace(uint8_t *buf, int frame) {
 // ============================================================================
 //  STATE 4: Cherry Blossom Pagoda — ENHANCED
 // ============================================================================
-#define MAX_PETALS 35
-struct Petal { int x, y; int speed_y, speed_x, phase; };
+#define MAX_PETALS 90
+struct Petal { float x, y; float speed_y, speed_x; int phase; };
 static struct Petal petals[MAX_PETALS];
 
 void init_cherry_blossom() {
     for (int i = 0; i < MAX_PETALS; i++) {
-        petals[i].x = get_rand() % 320;
-        petals[i].y = get_rand() % 240;
-        petals[i].speed_y = 1 + (get_rand() % 2);
-        petals[i].speed_x = -1 - (get_rand() % 2);
+        petals[i].x = (float)(get_rand() % 320);
+        petals[i].y = (float)(get_rand() % 240);
+        petals[i].speed_y = 0.8f + (get_rand() % 100) / 100.0f;
+        petals[i].speed_x = -1.2f - (get_rand() % 100) / 100.0f;
         petals[i].phase = get_rand() % 64;
     }
 }
+
 static void draw_blossom_cluster(uint8_t *buf, int cx, int cy, int r) {
-    // Base circle of magenta (5)
-    draw_circle(buf, cx, cy, r, 5);
-    // White highlight on top-left (7)
-    draw_circle(buf, cx - r/3, cy - r/3, r/2, 7);
-    // Inner depth (5)
-    draw_circle(buf, cx + r/3, cy + r/3, r/3, 5);
-    // Outer fuzzy details using dithering/scattered pixels
-    for (int dy = -r - 3; dy <= r + 3; dy++) {
-        for (int dx = -r - 3; dx <= r + 3; dx++) {
-            int dist2 = dx*dx + dy*dy;
-            if (dist2 > r*r && dist2 <= (r+3)*(r+3)) {
-                if ((dx * 17 + dy * 23) % 7 == 0) {
-                    draw_pixel(buf, cx + dx, cy + dy, (dx + dy) % 2 == 0 ? 7 : 5);
-                }
-            }
+    draw_circle(buf, cx, cy, r, 5); // magenta
+    draw_circle(buf, cx - r/3, cy - r/3, r/2, 7); // white highlights
+    draw_circle(buf, cx + r/2, cy + r/3, r/3, 5); // magenta overlap
+    draw_circle(buf, cx, cy, r/4, 1); // dark center
+
+    for (int i = 0; i < r * 2; i++) {
+        int angle = get_rand() % 360;
+        float rad = (float)angle * 3.14159f / 180.0f;
+        int dist = r + (get_rand() % 4);
+        int px = cx + (int)(cosf(rad) * dist);
+        int py = cy + (int)(sinf(rad) * dist);
+        if (px >= 0 && px < 320 && py >= 0 && py < 240) {
+            draw_pixel(buf, px, py, (get_rand() % 2 == 0) ? 5 : 7);
         }
     }
 }
 
 void play_cherry_blossom(uint8_t *buf, int frame) {
-    // ── SKY: deep blue -> warm orange sunset ──────────────────────────────────
+    // ── SKY GRADIENT (Indigo -> Crimson -> Gold) ──────────────────────────────
     for (int y = 0; y < 200; y++) {
         int d = (y * 15) / 200;
         for (int x = 0; x < 320; x++) {
@@ -611,164 +610,120 @@ void play_cherry_blossom(uint8_t *buf, int frame) {
         }
     }
 
-    // ── LARGE SETTING SUN with corona ────────────────────────────────────────
+    // ── LARGE SUN ────────────────────────────────────────────────────────────
     int sun_cx = 105, sun_cy = 130;
-    // Corona rays
-    for (int r = 52; r >= 49; r--) {
-        for (int dy = -r; dy <= r; dy++) {
-            for (int dx = -r; dx <= r; dx++) {
-                if (dx*dx + dy*dy <= r*r && dx*dx + dy*dy >= (r-3)*(r-3)) {
-                    art_dither_pixel(buf, sun_cx+dx, sun_cy+dy, 3, 2);
-                }
-            }
+    draw_circle(buf, sun_cx, sun_cy, 40, 1); // red
+    draw_circle(buf, sun_cx, sun_cy, 30, 3); // yellow
+    draw_circle(buf, sun_cx, sun_cy, 16, 7); // white hot core
+
+    // ── DETAILED 5-STORY PAGODA (Right side) ──────────────────────────────────
+    draw_rect(buf, 205, 185, 295, 200, 0);
+    draw_rect(buf, 205, 185, 295, 186, 5); // roof outline bottom
+
+    int tier_widths[5] = {65, 55, 47, 40, 32};
+    int tier_heights[5] = {20, 18, 16, 14, 12};
+    int current_y = 185;
+    for (int t = 0; t < 5; t++) {
+        int w = tier_widths[t];
+        int h = tier_heights[t];
+        int next_y = current_y - h;
+        // Pagoda body
+        draw_rect(buf, 250 - w/3, next_y, 250 + w/3, current_y, 0);
+        // Roof eave
+        draw_rect(buf, 250 - w/2, next_y, 250 + w/2, next_y + 3, 0);
+        draw_pixel(buf, 250 - w/2 - 1, next_y, 5);
+        draw_pixel(buf, 250 + w/2 + 1, next_y, 5);
+        // Glowing windows
+        if (t < 4) {
+            uint8_t wc = (frame % 40 < 30) ? 3 : 7;
+            draw_rect(buf, 248, next_y + h/2 - 2, 252, next_y + h/2 + 2, wc);
         }
+        current_y = next_y;
     }
-    draw_circle(buf, sun_cx, sun_cy, 48, 1); // red
-    draw_circle(buf, sun_cx, sun_cy, 40, 1);
-    draw_circle(buf, sun_cx, sun_cy, 32, 3); // yellow inner
-    draw_circle(buf, sun_cx, sun_cy, 18, 3);
-    draw_circle(buf, sun_cx, sun_cy, 8, 7);  // white hot center
-    // Specular
-    draw_circle(buf, sun_cx - 10, sun_cy - 12, 4, 7);
+    // Spire
+    draw_rect(buf, 249, current_y - 25, 251, current_y, 0);
+    draw_circle(buf, 250, current_y - 25, 2, 3);
 
-    // ── GROUND ────────────────────────────────────────────────────────────────
-    draw_rect(buf, 0, 200, 319, 239, 0);
-    // Ground highlight strip
-    art_dither_rect_h(buf, 0, 200, 319, 202, 5, 0, 320);
-
-    // ── POND reflection on ground ─────────────────────────────────────────────
-    draw_circle(buf, 130, 215, 35, 4);
-    draw_circle(buf, 130, 215, 28, 0);
-    // Ripple rings
-    int ripple = frame % 40;
-    if (ripple < 20) draw_circle(buf, 130, 215, 12 + ripple/4, 4);
-
-    // ── PAGODA silhouette (right side) ────────────────────────────────────────
-    // Foundation
-    draw_rect(buf, 215, 188, 285, 202, 0);
-    draw_rect(buf, 215, 188, 285, 189, 5);  // highlight top
-
-    // Tier 1 body
-    draw_rect(buf, 225, 158, 275, 188, 0);
-    // Tier 1 roof — sweeping eave
-    draw_rect(buf, 210, 158, 290, 162, 0);
-    draw_pixel(buf, 208, 157, 0); draw_pixel(buf, 209, 157, 0);
-    draw_pixel(buf, 291, 157, 0); draw_pixel(buf, 292, 157, 0);
-    draw_pixel(buf, 207, 156, 0);
-    draw_pixel(buf, 293, 156, 0);
-    // Roof underside glow
-    draw_rect(buf, 211, 163, 289, 163, 5);
-
-    // Tier 2 body
-    draw_rect(buf, 232, 128, 268, 158, 0);
-    // Tier 2 roof
-    draw_rect(buf, 218, 128, 282, 132, 0);
-    draw_pixel(buf, 216, 127, 0); draw_pixel(buf, 217, 127, 0);
-    draw_pixel(buf, 283, 127, 0); draw_pixel(buf, 284, 127, 0);
-    draw_pixel(buf, 215, 126, 0);
-    draw_pixel(buf, 285, 126, 0);
-    draw_rect(buf, 219, 133, 281, 133, 5);
-
-    // Tier 3 body
-    draw_rect(buf, 239, 98, 261, 128, 0);
-    // Tier 3 roof
-    draw_rect(buf, 226, 98, 274, 102, 0);
-    draw_pixel(buf, 224, 97, 0); draw_pixel(buf, 225, 97, 0);
-    draw_pixel(buf, 275, 97, 0); draw_pixel(buf, 276, 97, 0);
-    draw_pixel(buf, 223, 96, 0);
-    draw_pixel(buf, 277, 96, 0);
-    draw_rect(buf, 227, 103, 273, 103, 5);
-
-    // Finial / Spire
-    draw_rect(buf, 249, 72, 251, 98, 0);
-    draw_circle(buf, 250, 69, 3, 0);
-    draw_circle(buf, 250, 69, 1, 5);
-
-    // Warm windows
-    uint8_t wc = (frame % 60 < 50) ? 3 : 7;
-    draw_rect(buf, 246, 170, 254, 180, wc);
-    draw_rect(buf, 246, 140, 254, 148, wc);
-    draw_rect(buf, 247, 110, 253, 118, wc);
-    // Window glow halos
-    for (int dy2 = -2; dy2 <= 2; dy2++)
-        for (int dx2 = -2; dx2 <= 2; dx2++)
-            if (dx2*dx2 + dy2*dy2 <= 4) {
-                art_dither_pixel(buf, 250+dx2, 175+dy2, 3, 1);
-                art_dither_pixel(buf, 250+dx2, 144+dy2, 3, 1);
-                art_dither_pixel(buf, 250+dx2, 114+dy2, 3, 1);
-            }
-
-    // ── CHERRY BLOSSOM TREE (left) ────────────────────────────────────────────
-    // Trunk — dark, curved
-    for (int y = 200; y > 110; y--) {
-        int tx = 55 + isqrt(200 - y) * 2;
-        draw_rect(buf, tx - 3, y, tx + 3, y, 0);
-        // Bark texture
-        if ((y + 3) % 7 == 0) {
-            draw_pixel(buf, tx - 2, y, 5);
-            draw_pixel(buf, tx + 2, y, 5);
-        }
+    // ── GNARLED CHERRY BLOSSOM BRANCHES (Left & Right) ────────────────────────
+    // Left trunk & branch
+    for (int y = 200; y > 80; y--) {
+        int tx = 30 + isqrt(200 - y) * 3;
+        draw_rect(buf, tx - 4, y, tx + 4, y, 0);
+        if (y % 6 == 0) draw_pixel(buf, tx - 2, y, 5);
     }
-    // Branches (several arcing lines)
-    for (int x = 45; x > 12; x--) {
-        int by = 148 + (45 - x) * (45 - x) / 25;
+    for (int x = 40; x < 120; x++) {
+        int by = 130 + (x - 40) * (x - 40) / 45;
         draw_rect(buf, x, by - 2, x, by + 2, 0);
     }
-    for (int x = 60; x < 102; x++) {
-        int by = 128 + (x - 60) * (x - 60) / 35;
-        draw_rect(buf, x, by - 2, x, by + 2, 0);
-    }
-    for (int x = 52; x < 80; x++) {
-        int by = 118 - (x - 52) * (x - 52) / 60;
+    for (int x = 30; x > 5; x--) {
+        int by = 150 + (30 - x) * (30 - x) / 20;
         draw_rect(buf, x, by - 1, x, by + 1, 0);
     }
 
-    // Blossom clouds (layered pink and white using our dithered helper)
-    draw_blossom_cluster(buf, 28, 143, 14);
-    draw_blossom_cluster(buf, 22, 137, 10);
-    draw_blossom_cluster(buf, 18, 148, 8);
-    draw_blossom_cluster(buf, 35, 135, 9);
-    draw_blossom_cluster(buf, 65, 112, 16);
-    draw_blossom_cluster(buf, 72, 106, 12);
-    draw_blossom_cluster(buf, 58, 118, 12);
-    draw_blossom_cluster(buf, 55, 108, 8);
-    draw_blossom_cluster(buf, 95, 130, 13);
-    draw_blossom_cluster(buf, 100, 125, 8);
-    draw_blossom_cluster(buf, 88, 122, 7);
+    // Right branch framing top-right corner
+    for (int y = 0; y < 90; y++) {
+        int tx = 310 - isqrt(y) * 4;
+        draw_rect(buf, tx - 3, y, tx + 3, y, 0);
+    }
+    for (int x = 280; x > 180; x--) {
+        int by = 60 - (280 - x) * (280 - x) / 80;
+        draw_rect(buf, x, by - 2, x, by + 2, 0);
+    }
 
-    // Individual blossoms
-    for (int bx = 20; bx <= 110; bx += 6) {
-        for (int by = 105; by <= 155; by += 6) {
-            int dist_from_center = (bx - 55) * (bx - 55) + (by - 125) * (by - 125);
-            if (dist_from_center < 50 * 50) {
-                if ((bx * 13 + by * 19) % 11 < 2) {
-                    draw_pixel(buf, bx, by, 7);
-                    draw_pixel(buf, bx + 1, by, 5);
-                }
+    // ── MASSIVE BLOSSOM CLUSTERS ──────────────────────────────────────────────
+    // Left side clusters
+    draw_blossom_cluster(buf, 20, 140, 14);
+    draw_blossom_cluster(buf, 35, 130, 16);
+    draw_blossom_cluster(buf, 55, 120, 18);
+    draw_blossom_cluster(buf, 75, 125, 15);
+    draw_blossom_cluster(buf, 95, 135, 12);
+    // Right side clusters
+    draw_blossom_cluster(buf, 300, 30, 16);
+    draw_blossom_cluster(buf, 275, 45, 18);
+    draw_blossom_cluster(buf, 250, 40, 15);
+    draw_blossom_cluster(buf, 215, 30, 13);
+    draw_blossom_cluster(buf, 190, 25, 10);
+
+    // ── PETAL COVERED GROUND (Replaces Pond) ──────────────────────────────────
+    draw_rect(buf, 0, 200, 319, 239, 0);
+    for (int y = 200; y < 240; y++) {
+        for (int x = 0; x < 320; x++) {
+            int noise = (x * 17 + y * 23 + frame) % 19;
+            if (noise < 5) {
+                draw_pixel(buf, x, y, 5); // fallen petal
+            } else if (noise < 7) {
+                draw_pixel(buf, x, y, 1); // shadow
+            } else if (noise < 8) {
+                draw_pixel(buf, x, y, 7); // highlight
             }
         }
     }
 
-    // ── FALLING PETALS ────────────────────────────────────────────────────────
+    // ── HEAVY DYNAMIC FALLING PETALS ──────────────────────────────────────────
     for (int i = 0; i < MAX_PETALS; i++) {
         uint8_t col = (i % 3 == 0) ? 5 : ((i % 3 == 1) ? 7 : 1);
-        int wave = (frame / 8 + petals[i].phase) % 12 - 6;
-        int px = petals[i].x + wave;
-        int py = petals[i].y;
+        int wave = (int)(8.0f * sinf(frame * 0.05f + petals[i].phase));
+        int px = (int)petals[i].x + wave;
+        int py = (int)petals[i].y;
 
-        // Draw petal shape (diamond/cross)
-        draw_pixel(buf, px, py, col);
-        draw_pixel(buf, px + 1, py, col);
-        draw_pixel(buf, px, py + 1, col);
-        if (i % 4 != 0) {
-            draw_pixel(buf, px - 1, py, (col == 7) ? 5 : 7);
-            draw_pixel(buf, px + 1, py - 1, (col == 7) ? 5 : 7);
+        if (px >= 0 && px < 320 && py >= 0 && py < 240) {
+            draw_pixel(buf, px, py, col);
+            draw_pixel(buf, px + 1, py, col);
+            draw_pixel(buf, px, py + 1, col);
         }
 
         petals[i].y += petals[i].speed_y;
         petals[i].x += petals[i].speed_x;
-        if (petals[i].y >= 200) { petals[i].y = 0; petals[i].x = get_rand() % 320; }
-        if (petals[i].x < 0) { petals[i].x = 319; petals[i].y = get_rand() % 150; }
+
+        // Reset if offscreen or ground contact
+        if (petals[i].y >= 200 + (get_rand() % 35)) {
+            petals[i].y = 0;
+            petals[i].x = (float)(get_rand() % 320);
+        }
+        if (petals[i].x < 0) {
+            petals[i].x = 319.0f;
+            petals[i].y = (float)(get_rand() % 160);
+        }
     }
 }
 
