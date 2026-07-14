@@ -501,3 +501,155 @@ void play_happy_ocd(uint8_t *buf, int frame) {
     int quote_idx = (frame / 300) % 6;
     draw_string_centered_multiline(buf, OCD_QUOTES[quote_idx], 180, 105, 2, 7); // White text inside box
 }
+
+void init_happy_mania() {
+    // Purely frame-based slow waving animation
+}
+
+void play_happy_mania(uint8_t *buf, int frame) {
+    // 1. Sky: Quiet night sky with a slowly waving Aurora Borealis (Cyan 6 / Green 2)
+    for (int y = 0; y < 160; y++) {
+        for (int x = 0; x < 320; x++) {
+            // Waving math
+            float wave1 = sinf((float)x * 0.012f + (float)frame * 0.006f) * 16.0f;
+            float wave2 = cosf((float)x * 0.024f - (float)frame * 0.003f) * 8.0f;
+            int target_y = 65 + (int)(wave1 + wave2);
+            int dist = abs(y - target_y);
+            
+            uint8_t col = 0; // Black space
+            if (dist < 28) {
+                int t = art_bayer4_at(x, y);
+                int factor = (dist * 16) / 28;
+                if (t > factor) {
+                    col = (dist < 12) ? 6 : 2; // Cyan (6) core, Green (2) edges
+                }
+            }
+            if (col == 0) {
+                // Background navy gradient
+                int d = y / 10;
+                int t = art_bayer4_at(x, y);
+                col = (d >= t) ? 4 : 0;
+            }
+            draw_pixel(buf, x, y, col);
+        }
+    }
+
+    // 2. Twinkling, slowly moving background particles (calm rain/drift of stars)
+    for (int i = 0; i < 10; i++) {
+        int sx = (i * 37 + frame / 5) % 320;
+        int sy = (i * 19 + frame / 4) % 150;
+        if ((frame + i * 13) % 40 < 20) {
+            draw_pixel(buf, sx, sy, 7); // White twinkling star
+        }
+    }
+
+    // 3. Ground meadow (Dark Green 2)
+    for (int y = 160; y < 240; y++) {
+        for (int x = 0; x < 320; x++) {
+            int t = art_bayer4_at(x, y);
+            uint8_t col = (t < 5) ? 2 : 0; // quiet green/black dither
+            draw_pixel(buf, x, y, col);
+        }
+    }
+
+    // 4. Centered Grounding Message (soothing quotes to slow down manic rushes)
+    const char *MANIA_QUOTES[] = {
+        "SLOW DOWN.",
+        "IT'S OKAY TO PAUSE.",
+        "LET THE RUSH PASS.",
+        "FEEL THE GROUND.",
+        "BREATHE DEEP.",
+        "YOU ARE SAFE."
+    };
+    int quote_idx = (frame / 300) % 6;
+    draw_string_centered_multiline(buf, MANIA_QUOTES[quote_idx], 160, 185, 2, 3); // Yellow - 3 for warmth
+}
+
+void init_happy_psychosis() {
+    // Purely frame-based grounded cabin animation
+}
+
+void play_happy_psychosis(uint8_t *buf, int frame) {
+    // 1. Sky: Quiet midnight blue (4)
+    for (int y = 0; y < 160; y++) {
+        for (int x = 0; x < 320; x++) {
+            int t = art_bayer4_at(x, y);
+            uint8_t col = (t < 2) ? 4 : 0;
+            draw_pixel(buf, x, y, col);
+        }
+    }
+    
+    // 2. Ground (Green 2 and Black 0 dither)
+    for (int y = 160; y < 240; y++) {
+        for (int x = 0; x < 320; x++) {
+            int t = art_bayer4_at(x, y);
+            uint8_t col = (t < 6) ? 2 : 0;
+            draw_pixel(buf, x, y, col);
+        }
+    }
+
+    // 3. Deeply Rooted Oak Tree (Left side)
+    draw_rect(buf, 40, 100, 48, 165, 0); // Black trunk
+    draw_rect(buf, 35, 160, 39, 165, 0); // roots
+    draw_rect(buf, 49, 160, 53, 165, 0);
+    draw_circle(buf, 44, 95, 20, 2); // foliage
+    draw_circle(buf, 30, 85, 15, 2);
+    draw_circle(buf, 58, 85, 15, 2);
+    draw_circle(buf, 44, 70, 18, 2);
+
+    // 4. Cozy Grounded Cabin (Right side)
+    int cx = 220;
+    int cy = 120;
+    // Walls (Beige / Yellow 3 dithered with White 7)
+    for (int y = cy; y < cy + 45; y++) {
+        for (int x = cx; x < cx + 60; x++) {
+            int t = art_bayer4_at(x, y);
+            uint8_t col = (t < 8) ? 3 : 7;
+            draw_pixel(buf, x, y, col);
+        }
+    }
+    // Roof (Red - 1)
+    for (int y = cy - 20; y < cy; y++) {
+        int w = (y - (cy - 20)) * 3 / 2; // expanding triangle
+        draw_rect(buf, cx + 30 - w, y, cx + 30 + w, y, 1);
+    }
+    // Door (Black - 0)
+    draw_rect(buf, cx + 15, cy + 20, cx + 27, cy + 45, 0);
+    // Warm lit Window (Yellow - 3, glowing)
+    draw_rect(buf, cx + 38, cy + 12, cx + 50, cy + 24, 0); // frame
+    draw_rect(buf, cx + 40, cy + 14, cx + 48, cy + 22, 3); // glass
+    
+    // Chimney & Smoke puffs
+    draw_rect(buf, cx + 48, cy - 22, cx + 54, cy - 8, 0); // black chimney
+    for (int i = 0; i < 3; i++) {
+        int smoke_phase = (frame + i * 50) % 150;
+        int sx = cx + 51 + smoke_phase / 3;
+        int sy = cy - 25 - smoke_phase / 4;
+        if (smoke_phase < 120) {
+            int r_sz = 2 + smoke_phase / 30;
+            draw_circle(buf, sx, sy, r_sz, 6); // Smoke puff in Cyan - 6
+        }
+    }
+
+    // 5. Centered Grounding Box for Reality Anchors
+    int bx1 = 80;
+    int by1 = 175;
+    int bx2 = 280;
+    int by2 = 230;
+
+    draw_rect(buf, bx1 + 2, by1 + 2, bx2 + 2, by2 + 2, 0); // shadow
+    draw_rect(buf, bx1, by1, bx2, by2, 2); // Green border
+    draw_rect(buf, bx1 + 1, by1 + 1, bx2 - 1, by2 - 1, 0); // Black interior
+
+    const char *PSY_QUOTES[] = {
+        "YOU ARE HERE, RIGHT NOW.",
+        "THIS MOMENT IS REAL.",
+        "FEEL THE GROUND.",
+        "THE FOG WILL CLEAR.",
+        "YOU ARE SAFE.",
+        "IT WILL PASS."
+    };
+    int quote_idx = (frame / 300) % 6;
+    draw_string_centered_multiline(buf, PSY_QUOTES[quote_idx], 180, 185, 1, 7); // White text inside box
+}
+
