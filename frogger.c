@@ -104,6 +104,7 @@ static int get_nearest_log_dist(int x, int river_id) {
 }
 
 static void frogger_run_ai() {
+    int sp = 0;
     if (frog_y == LANE_Y0) {
         // Safe to jump to Road 1?
         if (is_road_safe_predictive(frog_x, LANE_Y1)) {
@@ -147,44 +148,54 @@ static void frogger_run_ai() {
         frog_y = LANE_Y3;
     }
     else if (frog_y == LANE_Y3) {
-        // Safe to jump to River 1 log?
-        int sp = 0;
+        // Safe to jump to River 1 log directly?
         if (check_log_floating(frog_x, LANE_Y4, &sp)) {
             frog_y = LANE_Y4;
         } else {
-            // Move left/right to align with a log in River 1
-            int nearest_log_dist = 999;
-            int step_dir = 1;
-            for (int i = 0; i < 3; i++) {
-                int d = (log_x1[i] + 24) - frog_x;
-                if (abs(d) < abs(nearest_log_dist)) {
-                    nearest_log_dist = d;
-                    step_dir = (d > 0) ? 1 : -1;
+            // Check if stepping left/right puts us in front of a log in River 1
+            bool left_safe = (frog_x - 12 >= 10) && check_log_floating(frog_x - 12, LANE_Y4, &sp);
+            bool right_safe = (frog_x + 12 <= 310) && check_log_floating(frog_x + 12, LANE_Y4, &sp);
+            
+            if (left_safe && right_safe) {
+                frog_x += (get_rand() % 2 == 0) ? 12 : -12;
+            } else if (left_safe) {
+                frog_x -= 12;
+            } else if (right_safe) {
+                frog_x += 12;
+            } else {
+                // Otherwise, move towards the nearest log center in River 1
+                int nearest_log_dist = 999;
+                int step_dir = 1;
+                for (int i = 0; i < 3; i++) {
+                    int d = (log_x1[i] + 24) - frog_x;
+                    if (abs(d) < abs(nearest_log_dist)) {
+                        nearest_log_dist = d;
+                        step_dir = (d > 0) ? 1 : -1;
+                    }
                 }
-            }
-            int next_x = frog_x + step_dir * 12;
-            if (next_x >= 10 && next_x <= 310) {
-                frog_x = next_x;
+                int next_x = frog_x + step_dir * 12;
+                if (next_x >= 10 && next_x <= 310) {
+                    frog_x = next_x;
+                }
             }
         }
     }
     else if (frog_y == LANE_Y4) {
-        // Safe to jump to River 2 log?
-        int sp = 0;
+        // Safe to jump to River 2 log directly?
         if (check_log_floating(frog_x, LANE_Y5, &sp)) {
             frog_y = LANE_Y5;
         } else {
-            // align with a log in River 2, but only if we stay on River 1 log
-            bool left_safe = (frog_x - 12 >= 10) && check_log_floating(frog_x - 12, LANE_Y4, &sp);
-            bool right_safe = (frog_x + 12 <= 310) && check_log_floating(frog_x + 12, LANE_Y4, &sp);
+            // Walk left/right along our River 1 log to align with a River 2 log
+            bool left_valid = (frog_x - 12 >= 10) && check_log_floating(frog_x - 12, LANE_Y4, &sp);
+            bool right_valid = (frog_x + 12 <= 310) && check_log_floating(frog_x + 12, LANE_Y4, &sp);
             
             int dist_curr = get_nearest_log_dist(frog_x, 2);
-            int dist_left = left_safe ? get_nearest_log_dist(frog_x - 12, 2) : 999;
-            int dist_right = right_safe ? get_nearest_log_dist(frog_x + 12, 2) : 999;
+            int dist_left = left_valid ? get_nearest_log_dist(frog_x - 12, 2) : 999;
+            int dist_right = right_valid ? get_nearest_log_dist(frog_x + 12, 2) : 999;
             
-            if (left_safe && dist_left < dist_curr && (dist_left <= dist_right)) {
+            if (left_valid && dist_left < dist_curr && (dist_left <= dist_right)) {
                 frog_x -= 12;
-            } else if (right_safe && dist_right < dist_curr && (dist_right <= dist_left)) {
+            } else if (right_valid && dist_right < dist_curr && (dist_right <= dist_left)) {
                 frog_x += 12;
             }
         }
@@ -202,22 +213,22 @@ static void frogger_run_ai() {
             }
         }
 
+        // Jump to bay if aligned
         if (abs(frog_x - closest_bay) < 8) {
             frog_x = closest_bay;
             frog_y = LANE_Y6;
         } else {
-            // align with the closest bay, but only if we stay on River 2 log
-            int sp = 0;
-            bool left_safe = (frog_x - 12 >= 10) && check_log_floating(frog_x - 12, LANE_Y5, &sp);
-            bool right_safe = (frog_x + 12 <= 310) && check_log_floating(frog_x + 12, LANE_Y5, &sp);
+            // Walk left/right along our River 2 log to align with the closest bay
+            bool left_valid = (frog_x - 12 >= 10) && check_log_floating(frog_x - 12, LANE_Y5, &sp);
+            bool right_valid = (frog_x + 12 <= 310) && check_log_floating(frog_x + 12, LANE_Y5, &sp);
             
             int dist_curr = abs(closest_bay - frog_x);
-            int dist_left = left_safe ? abs(closest_bay - (frog_x - 12)) : 999;
-            int dist_right = right_safe ? abs(closest_bay - (frog_x + 12)) : 999;
+            int dist_left = left_valid ? abs(closest_bay - (frog_x - 12)) : 999;
+            int dist_right = right_valid ? abs(closest_bay - (frog_x + 12)) : 999;
             
-            if (left_safe && dist_left < dist_curr && (dist_left <= dist_right)) {
+            if (left_valid && dist_left < dist_curr && (dist_left <= dist_right)) {
                 frog_x -= 12;
-            } else if (right_safe && dist_right < dist_curr && (dist_right <= dist_left)) {
+            } else if (right_valid && dist_right < dist_curr && (dist_right <= dist_left)) {
                 frog_x += 12;
             }
         }
@@ -395,7 +406,7 @@ void play_frogger(uint8_t *buffer, int frame_counter) {
 
     // --- AI Timer Actions ---
     ai_timer++;
-    if (ai_timer >= 20) {
+    if (ai_timer >= 8) {
         ai_timer = 0;
         frogger_run_ai();
     }

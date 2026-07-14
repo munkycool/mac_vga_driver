@@ -173,18 +173,96 @@ void play_snake(uint8_t *buffer, int frame_counter) {
         int sx = OFFSET_X + snake_x[i] * CELL_SZ;
         int sy = OFFSET_Y + snake_y[i] * CELL_SZ;
         
-        uint8_t color;
+        uint8_t color = (i == 0) ? 3 : ((i % 2 == 0) ? 2 : 6); // Head: Yellow, Body: Green/Cyan
+        
         if (i == 0) {
-            color = 3; // Yellow Head
-        } else {
-            // Alternating green segments
-            color = (i % 2 == 0) ? 2 : 6; // Green / Cyan body
+            // ── DRAW HEAD ───────────────────────────────────────────────────
+            // Base rounded head (8x8 central circle/rect)
+            draw_circle(buffer, sx + 5, sy + 5, 5, color);
+            
+            // Draw eyes and tongue depending on direction
+            if (s_dx == 1) { // Moving Right
+                draw_pixel(buffer, sx + 7, sy + 3, 0); // eyes
+                draw_pixel(buffer, sx + 7, sy + 7, 0);
+                if (frame_counter % 16 < 8) { // flashing tongue
+                    draw_rect(buffer, sx + 10, sy + 5, sx + 12, sy + 5, 1); // red tongue
+                    draw_pixel(buffer, sx + 12, sy + 4, 1); // fork
+                    draw_pixel(buffer, sx + 12, sy + 6, 1);
+                }
+            } else if (s_dx == -1) { // Moving Left
+                draw_pixel(buffer, sx + 3, sy + 3, 0);
+                draw_pixel(buffer, sx + 3, sy + 7, 0);
+                if (frame_counter % 16 < 8) {
+                    draw_rect(buffer, sx - 2, sy + 5, sx, sy + 5, 1);
+                    draw_pixel(buffer, sx - 2, sy + 4, 1);
+                    draw_pixel(buffer, sx - 2, sy + 6, 1);
+                }
+            } else if (s_dy == 1) { // Moving Down
+                draw_pixel(buffer, sx + 3, sy + 7, 0);
+                draw_pixel(buffer, sx + 7, sy + 7, 0);
+                if (frame_counter % 16 < 8) {
+                    draw_rect(buffer, sx + 5, sy + 10, sx + 5, sy + 12, 1);
+                    draw_pixel(buffer, sx + 4, sy + 12, 1);
+                    draw_pixel(buffer, sx + 6, sy + 12, 1);
+                }
+            } else if (s_dy == -1) { // Moving Up
+                draw_pixel(buffer, sx + 3, sy + 3, 0);
+                draw_pixel(buffer, sx + 7, sy + 3, 0);
+                if (frame_counter % 16 < 8) {
+                    draw_rect(buffer, sx + 5, sy - 2, sx + 5, sy, 1);
+                    draw_pixel(buffer, sx + 4, sy - 2, 1);
+                    draw_pixel(buffer, sx + 6, sy - 2, 1);
+                }
+            }
         }
-        draw_rect(buffer, sx + 1, sy + 1, sx + CELL_SZ - 2, sy + CELL_SZ - 2, color);
-        // Head eyes
-        if (i == 0) {
-            draw_pixel(buffer, sx + 3, sy + 3, 0);
-            draw_pixel(buffer, sx + 8, sy + 3, 0);
+        else if (i == snake_len - 1) {
+            // ── DRAW TAIL (Tapered) ──────────────────────────────────────────
+            // Tapers off in the direction opposite to the next segment (i-1)
+            int dx_prev = snake_x[i-1] - snake_x[i];
+            int dy_prev = snake_y[i-1] - snake_y[i];
+            
+            if (dx_prev == 1) { // Prev is Right -> Tail points Left
+                for (int col = 0; col < CELL_SZ; col++) {
+                    int r = col / 2; // Tapering
+                    draw_rect(buffer, sx + col, sy + 5 - r, sx + col, sy + 5 + r, color);
+                }
+            } else if (dx_prev == -1) { // Prev is Left -> Tail points Right
+                for (int col = 0; col < CELL_SZ; col++) {
+                    int r = (CELL_SZ - 1 - col) / 2;
+                    draw_rect(buffer, sx + col, sy + 5 - r, sx + col, sy + 5 + r, color);
+                }
+            } else if (dy_prev == 1) { // Prev is Down -> Tail points Up
+                for (int row = 0; row < CELL_SZ; row++) {
+                    int r = row / 2;
+                    draw_rect(buffer, sx + 5 - r, sy + row, sx + 5 + r, sy + row, color);
+                }
+            } else { // Prev is Up -> Tail points Down
+                for (int row = 0; row < CELL_SZ; row++) {
+                    int r = (CELL_SZ - 1 - row) / 2;
+                    draw_rect(buffer, sx + 5 - r, sy + row, sx + 5 + r, sy + row, color);
+                }
+            }
+        }
+        else {
+            // ── DRAW CONNECTED BODY ──────────────────────────────────────────
+            // Center block
+            draw_rect(buffer, sx + 3, sy + 3, sx + CELL_SZ - 4, sy + CELL_SZ - 4, color);
+            
+            // Bridge to segment i-1 (prev)
+            int dx_prev = snake_x[i-1] - snake_x[i];
+            int dy_prev = snake_y[i-1] - snake_y[i];
+            if (dx_prev == -1) draw_rect(buffer, sx, sy + 3, sx + 2, sy + CELL_SZ - 4, color);
+            if (dx_prev == 1)  draw_rect(buffer, sx + CELL_SZ - 3, sy + 3, sx + CELL_SZ - 1, sy + CELL_SZ - 4, color);
+            if (dy_prev == -1) draw_rect(buffer, sx + 3, sy, sx + CELL_SZ - 4, sy + 2, color);
+            if (dy_prev == 1)  draw_rect(buffer, sx + 3, sy + CELL_SZ - 3, sx + CELL_SZ - 4, sy + CELL_SZ - 1, color);
+            
+            // Bridge to segment i+1 (next)
+            int dx_next = snake_x[i+1] - snake_x[i];
+            int dy_next = snake_y[i+1] - snake_y[i];
+            if (dx_next == -1) draw_rect(buffer, sx, sy + 3, sx + 2, sy + CELL_SZ - 4, color);
+            if (dx_next == 1)  draw_rect(buffer, sx + CELL_SZ - 3, sy + 3, sx + CELL_SZ - 1, sy + CELL_SZ - 4, color);
+            if (dy_next == -1) draw_rect(buffer, sx + 3, sy, sx + CELL_SZ - 4, sy + 2, color);
+            if (dy_next == 1)  draw_rect(buffer, sx + 3, sy + CELL_SZ - 3, sx + CELL_SZ - 4, sy + CELL_SZ - 1, color);
         }
     }
 }
