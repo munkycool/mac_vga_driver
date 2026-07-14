@@ -130,6 +130,57 @@ static void draw_lambo_countach(uint8_t *buf, int cx, int cy, int frame, bool ri
     }
 }
 
+static const char *delorean_sprite[8] = {
+    ".......WWWWWWWW...................",
+    "......WBBBBBBBBCCW................",
+    "....WKKKKKKKKKKKKKKWWWW...........",
+    "..WWWWWWWWWWWWWWWWWWWWWWWWWWYY....",
+    ".WWWWWWKKKWWWWWWWWWWWWWKKKKKWWW...",
+    "WWWWWWKWWWKWWWWWWWWWWWKWWWKWWWW...",
+    ".KKKKKWWWWWKKKKKKKKKKKWWWWWKKKK...",
+    "..KKKKKKKKKKKKKKKKKKKKKKKKKKKK...."
+};
+
+static void draw_delorean(uint8_t *buf, int cx, int cy, int frame, bool right) {
+    int scale = 4;
+    int start_x = cx - 17 * scale;
+    int start_y = cy - 3 * scale;
+    
+    for (int r = 0; r < 8; r++) {
+        for (int c = 0; c < 34; c++) {
+            char color_char = delorean_sprite[r][right ? c : (33 - c)];
+            if (color_char == '.') continue;
+            uint8_t color = 0;
+            switch (color_char) {
+                case 'K': color = 0; break;
+                case 'R': color = 1; break;
+                case 'G': color = 2; break;
+                case 'Y': color = 3; break;
+                case 'B': color = 4; break;
+                case 'M': color = 5; break;
+                case 'C': color = 6; break;
+                case 'W': color = 7; break;
+                default: continue;
+            }
+            int px = start_x + c * scale;
+            int py = start_y + r * scale;
+            draw_rect(buf, px, py, px + scale - 1, py + scale - 1, color);
+        }
+    }
+
+    // Headlight beam (cyan/white glow)
+    int dir = right ? 1 : -1;
+    int lx_start = cx + dir * 14 * scale;
+    int beam_cy = cy + 1 * scale;
+    for (int d = 0; d < 40; d++) {
+        int bx = lx_start + dir * d;
+        int half = d / 6 * scale / 2 + 1;
+        for (int yy = beam_cy - half; yy <= beam_cy + half; yy++) {
+            art_dither_pixel(buf, bx, yy, 6, 3 - d/15);
+        }
+    }
+}
+
 // ============================================================================
 //  STATE 1: Synthwave Sunset — ENHANCED
 //  New: multi-layer dithered sky, hex grid floor, scanline glow, car with beam
@@ -255,7 +306,14 @@ void play_synthwave(uint8_t *buf, int frame) {
         }
     }
 
-    // ── LAMBORGHINI COUNTACH ──────────────────────────────────────────────────
+    // ── DELOREAN DMC-12 (Driving in far lane, faster to overtake) ─────────────
+    int delo_speed = 3;
+    int delo_wrap = 320 + 34 * 4;
+    int delo_x = (int)((long)frame * delo_speed % delo_wrap) - 17 * 4;
+    int delo_y = 195;
+    draw_delorean(buf, delo_x, delo_y, frame, true);
+
+    // ── LAMBORGINI COUNTACH (Driving in near lane) ──────────────────────────
     int car_speed = 2;
     int car_wrap = 320 + 30 * CAR_SCALE;
     int car_x = (int)((long)frame * car_speed % car_wrap) - 15 * CAR_SCALE;
@@ -1189,33 +1247,50 @@ void play_nasa(uint8_t *buf, int frame) {
     }
 
     // ── NASA WORM LOGO (top, large) ───────────────────────────────────────────
-    // N — angled strokes
-    draw_rect(buf, 90, 22, 94, 48, 1);
-    for (int i = 0; i <= 18; i++) draw_rect(buf, 90 + i, 22 + i, 93 + i, 23 + i, 1);
-    draw_rect(buf, 108, 22, 112, 48, 1);
+    // N — smooth curved worm strokes
+    draw_rect(buf, 90, 25, 93, 48, 1);
+    for (int i = 0; i <= 18; i++) draw_rect(buf, 92 + i, 22 + i, 95 + i, 25 + i, 1);
+    draw_rect(buf, 108, 22, 111, 45, 1);
 
-    // A — two diagonal strokes meeting at peak
-    for (int i = 0; i <= 12; i++) draw_rect(buf, 118 + i, 48 - 2*i, 121 + i, 49 - 2*i, 1);
-    for (int i = 0; i <= 12; i++) draw_rect(buf, 130 + i, 24 + 2*i, 133 + i, 25 + 2*i, 1);
-    // Crossbar
-    draw_rect(buf, 123, 35, 131, 37, 1);
+    // A — Rounded inverted U arch (No crossbar, authentic NASA worm)
+    draw_rect(buf, 118, 30, 121, 48, 1);
+    draw_rect(buf, 130, 30, 133, 48, 1);
+    draw_rect(buf, 122, 22, 129, 25, 1);
+    draw_rect(buf, 120, 24, 123, 29, 1);
+    draw_rect(buf, 128, 24, 131, 29, 1);
 
-    // S — curves using rects
-    draw_rect(buf, 148, 22, 163, 25, 1);  // top
-    draw_rect(buf, 145, 22, 148, 35, 1);  // top-left
-    draw_rect(buf, 148, 33, 158, 37, 1);  // mid
-    draw_rect(buf, 158, 36, 163, 48, 1);  // bot-right
-    draw_rect(buf, 145, 45, 160, 48, 1);  // bot
+    // S — smooth curves using flats and segments
+    draw_rect(buf, 148, 22, 161, 25, 1); // top flat
+    draw_rect(buf, 144, 24, 147, 34, 1); // top-left stem
+    draw_rect(buf, 148, 33, 161, 36, 1); // middle flat
+    draw_rect(buf, 161, 35, 164, 46, 1); // bottom-right stem
+    draw_rect(buf, 147, 45, 160, 48, 1); // bottom flat
+    draw_rect(buf, 160, 23, 162, 27, 1); // top-right bend
+    draw_rect(buf, 145, 43, 148, 47, 1); // bottom-left bend
 
-    // A — second A
-    for (int i = 0; i <= 12; i++) draw_rect(buf, 170 + i, 48 - 2*i, 173 + i, 49 - 2*i, 1);
-    for (int i = 0; i <= 12; i++) draw_rect(buf, 182 + i, 24 + 2*i, 185 + i, 25 + 2*i, 1);
-    draw_rect(buf, 175, 35, 183, 37, 1);
+    // A — Second A (Rounded arch, no crossbar)
+    draw_rect(buf, 170, 30, 173, 48, 1);
+    draw_rect(buf, 182, 30, 185, 48, 1);
+    draw_rect(buf, 174, 22, 181, 25, 1);
+    draw_rect(buf, 172, 24, 175, 29, 1);
+    draw_rect(buf, 180, 24, 183, 29, 1);
 
     // ── LAUNCH PAD / GROUND (only at bottom if shuttle is near) ───────────────
     int cycle = frame % 240;
     int sy = 215 - (cycle * 180) / 240;
     int sx = 160;
+
+    // Detachment physics for boosters (SRBs)
+    int srb_left_x = sx - 12;
+    int srb_right_x = sx + 12;
+    int srb_y_offset = 0;
+    bool detached = (cycle >= 130);
+    int t_detach = cycle - 130;
+    if (detached) {
+        srb_left_x = sx - 12 - t_detach * 2;
+        srb_right_x = sx + 12 + t_detach * 2;
+        srb_y_offset = t_detach * 2;
+    }
 
     // Launchpad base (only visible early in cycle)
     if (cycle < 60) {
@@ -1256,14 +1331,28 @@ void play_nasa(uint8_t *buf, int frame) {
         int base_y = sy + 52;
         // Left SRB
         int lf = 4 + (cycle % 4);
-        draw_circle(buf, sx - 12, base_y, lf, 3);
-        draw_circle(buf, sx - 12, base_y + 4, lf - 1, 1);
-        draw_circle(buf, sx - 12, base_y + 7, lf - 2, 5);
+        int lsrb_flame_x = srb_left_x;
+        int lsrb_flame_y = base_y + srb_y_offset;
+        if (!detached) {
+            draw_circle(buf, lsrb_flame_x, lsrb_flame_y, lf, 3);
+            draw_circle(buf, lsrb_flame_x, lsrb_flame_y + 4, lf - 1, 1);
+            draw_circle(buf, lsrb_flame_x, lsrb_flame_y + 7, lf - 2, 5);
+        } else if (t_detach < 15) {
+            draw_circle(buf, lsrb_flame_x, lsrb_flame_y, lf / 2, 3);
+            draw_circle(buf, lsrb_flame_x, lsrb_flame_y + 2, lf / 2, 1);
+        }
         // Right SRB
         int rf = 4 + ((cycle + 1) % 4);
-        draw_circle(buf, sx + 12, base_y, rf, 3);
-        draw_circle(buf, sx + 12, base_y + 4, rf - 1, 1);
-        draw_circle(buf, sx + 12, base_y + 7, rf - 2, 5);
+        int rsrb_flame_x = srb_right_x;
+        int rsrb_flame_y = base_y + srb_y_offset;
+        if (!detached) {
+            draw_circle(buf, rsrb_flame_x, rsrb_flame_y, rf, 3);
+            draw_circle(buf, rsrb_flame_x, rsrb_flame_y + 4, rf - 1, 1);
+            draw_circle(buf, rsrb_flame_x, rsrb_flame_y + 7, rf - 2, 5);
+        } else if (t_detach < 15) {
+            draw_circle(buf, rsrb_flame_x, rsrb_flame_y, rf / 2, 3);
+            draw_circle(buf, rsrb_flame_x, rsrb_flame_y + 2, rf / 2, 1);
+        }
         // SSME (main engine)
         int mf = 5 + ((cycle + 2) % 4);
         draw_circle(buf, sx, base_y, mf, 7);
@@ -1292,22 +1381,29 @@ void play_nasa(uint8_t *buf, int frame) {
     draw_rect(buf, sx - 3, sy - 31, sx + 3, sy - 28, 3);
     draw_rect(buf, sx - 1, sy - 34, sx + 1, sy - 32, 1);  // red tip
 
-    // Left SRB
-    draw_rect(buf, sx - 15, sy - 18, sx - 10, sy + 28, 7);
-    draw_rect(buf, sx - 14, sy - 22, sx - 11, sy - 18, 7);  // nose
-    draw_rect(buf, sx - 15, sy - 22, sx - 14, sy - 18, 6);
-    draw_rect(buf, sx - 15, sy - 18, sx - 15, sy + 28, 5);  // shadow
-    draw_pixel(buf, sx - 13, sy - 23, 7);  // tip
-    // SRB ET attach ring
-    draw_rect(buf, sx - 15, sy, sx - 10, sy + 2, 6);
+    // Left SRB (staged / detachable)
+    int ls_x = srb_left_x;
+    int ls_y = sy + srb_y_offset;
+    draw_rect(buf, ls_x - 3, ls_y - 18, ls_x + 2, ls_y + 28, 7);
+    draw_rect(buf, ls_x - 2, ls_y - 22, ls_x + 1, ls_y - 18, 7);  // nose
+    draw_rect(buf, ls_x - 3, ls_y - 22, ls_x - 2, ls_y - 18, 6);
+    draw_rect(buf, ls_x - 3, ls_y - 18, ls_x - 3, ls_y + 28, 5);  // shadow
+    draw_pixel(buf, ls_x - 1, ls_y - 23, 7);  // tip
+    if (!detached) {
+        draw_rect(buf, ls_x - 3, ls_y, ls_x + 2, ls_y + 2, 6); // ET attach ring
+    }
 
-    // Right SRB
-    draw_rect(buf, sx + 10, sy - 18, sx + 15, sy + 28, 7);
-    draw_rect(buf, sx + 11, sy - 22, sx + 14, sy - 18, 7);
-    draw_rect(buf, sx + 14, sy - 22, sx + 15, sy - 18, 6);
-    draw_rect(buf, sx + 15, sy - 18, sx + 15, sy + 28, 5);
-    draw_pixel(buf, sx + 13, sy - 23, 7);
-    draw_rect(buf, sx + 10, sy, sx + 15, sy + 2, 6);
+    // Right SRB (staged / detachable)
+    int rs_x = srb_right_x;
+    int rs_y = sy + srb_y_offset;
+    draw_rect(buf, rs_x - 2, rs_y - 18, rs_x + 3, rs_y + 28, 7);
+    draw_rect(buf, rs_x - 1, rs_y - 22, rs_x + 2, rs_y - 18, 7);
+    draw_rect(buf, rs_x + 2, rs_y - 22, rs_x + 3, rs_y - 18, 6);
+    draw_rect(buf, rs_x + 3, rs_y - 18, rs_x + 3, rs_y + 28, 5);
+    draw_pixel(buf, rs_x + 1, rs_y - 23, 7);
+    if (!detached) {
+        draw_rect(buf, rs_x - 2, rs_y, rs_x + 3, rs_y + 2, 6);
+    }
 
     // Shuttle Orbiter (mounted on ET)
     // Fuselage
@@ -1655,6 +1751,16 @@ void play_challenger(uint8_t *buf, int frame) {
             draw_circle(buf, bx2 + 4, 229, sr - 5, 6);
         }
 
+        // Big Bird Memorial Grave
+        draw_rect(buf, 260, 205, 290, 235, 4); // dark blue/grey stone
+        draw_rect(buf, 262, 207, 288, 209, 7); // white top border
+        draw_string(buf, "RIP", 269, 212, 1, 7);
+        draw_string(buf, "B.BIRD", 264, 222, 1, 7);
+        // Draw a dithered yellow feather next to the grave
+        draw_rect(buf, 245, 225, 252, 235, 3); // yellow feather block
+        draw_pixel(buf, 248, 223, 7); // white stem
+        draw_pixel(buf, 247, 224, 7);
+
         // Caption
         draw_string(buf, "CHALLENGER", 85, 6, 1, 7);
         draw_string(buf, "STS-51-L", 100, 16, 1, 6);
@@ -1718,36 +1824,73 @@ void play_nine_eleven(uint8_t *buf, int frame) {
             }
         }
 
-        // --- PHASE 1: Plane approaching ---
-        if (cycle < 120) {
-            int px = -30 + (cycle * 165) / 120;
+        // --- PLANE 1: Flight 11 (Approaches North Tower) ---
+        if (cycle < 70) {
+            int px = -30 + (cycle * 172) / 70;
             int py = 85;
-            draw_rect(buf, px - 12, py, px + 12, py, 0);
-            draw_rect(buf, px - 3, py - 5, px + 3, py + 5, 0);
+            draw_rect(buf, px - 12, py, px + 12, py, 0); // body
+            draw_rect(buf, px - 3, py - 5, px + 3, py + 5, 0); // wings
             draw_pixel(buf, px - 11, py - 2, 0);
             draw_pixel(buf, px - 11, py + 2, 0);
         }
-        // --- PHASE 2: Crash & Explosion ---
-        else {
-            int t = cycle - 120;
-            int ex = 142, ey = 85;
-            int r = t / 2;
-            if (r > 20) r = 20;
 
-            if (t < 15) {
+        // --- PLANE 2: Flight 175 (Approaches South Tower, banked) ---
+        if (cycle >= 70 && cycle < 140) {
+            int t = cycle - 70;
+            int px = 350 - (t * 183) / 70;
+            int py = 75 + (t * 20) / 70;
+            // Banked plane silhouette (drawn slightly angled)
+            draw_rect(buf, px - 12, py, px + 12, py, 0);
+            draw_rect(buf, px - 5, py - 7, px - 1, py + 7, 0); // banked wings
+            draw_pixel(buf, px + 11, py - 2, 0);
+            draw_pixel(buf, px + 11, py + 2, 0);
+        }
+
+        // --- EXPLOSIONS & SMOKE ---
+        // North Tower (WTC 1) hit at cycle = 70
+        if (cycle >= 70) {
+            int t1 = cycle - 70;
+            int ex = 142, ey = 85;
+            // Explosion flash
+            if (t1 < 15) {
+                int r = t1 / 2 + 2;
                 draw_circle(buf, ex, ey, r + 6, 7);
                 draw_circle(buf, ex, ey, r + 2, 3);
                 draw_circle(buf, ex, ey, r, 1);
             }
-
+            // Billowing smoke column
             for (int i = 0; i < 6; i++) {
-                int sy_pos = ey - (t * 2) / 3 - i * 12;
-                int sx_pos = ex + (t / 4) + (i * 4) % 15 - 7;
-                int sr = 8 + i + t / 10;
-                if (sr > 18) sr = 18;
+                int sy_pos = ey - (t1 * 2) / 3 - i * 12;
+                int sx_pos = ex + (t1 / 6) + (i * 4) % 15 - 7;
+                int sr = 7 + i + t1 / 12;
+                if (sr > 16) sr = 16;
                 if (sy_pos > 20) {
-                    draw_circle(buf, sx_pos, sy_pos, sr, 0);
-                    draw_circle(buf, sx_pos + 2, sy_pos - 2, sr - 3, 4);
+                    draw_circle(buf, sx_pos, sy_pos, sr, 0); // black smoke
+                    draw_circle(buf, sx_pos + 1, sy_pos - 1, sr - 3, 4); // grey highlight
+                }
+            }
+        }
+
+        // South Tower (WTC 2) hit at cycle = 140
+        if (cycle >= 140) {
+            int t2 = cycle - 140;
+            int ex = 167, ey = 95;
+            // Explosion flash
+            if (t2 < 15) {
+                int r = t2 / 2 + 2;
+                draw_circle(buf, ex, ey, r + 8, 7);
+                draw_circle(buf, ex, ey, r + 3, 3);
+                draw_circle(buf, ex, ey, r, 1);
+            }
+            // Billowing smoke column
+            for (int i = 0; i < 6; i++) {
+                int sy_pos = ey - (t2 * 2) / 3 - i * 12;
+                int sx_pos = ex + (t2 / 6) + (i * 3) % 13 - 6;
+                int sr = 7 + i + t2 / 12;
+                if (sr > 16) sr = 16;
+                if (sy_pos > 20) {
+                    draw_circle(buf, sx_pos, sy_pos, sr, 0); // black smoke
+                    draw_circle(buf, sx_pos + 1, sy_pos - 1, sr - 3, 4); // grey highlight
                 }
             }
         }
