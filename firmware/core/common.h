@@ -33,7 +33,7 @@
 #define DOWNLOADS_FRAME_BYTES (DOWNLOADS_FRAME_WIDTH * DOWNLOADS_FRAME_HEIGHT)
 
 // --- Deterministic State Machine ---
-#define NUM_STATES 37
+#define NUM_STATES 38
 #define SPLASH_PROB 3  // 1-in-SPLASH_PROB chance of boot splash
 enum ProgramState {
     STATE_XBOX_PRIDE,
@@ -73,6 +73,7 @@ enum ProgramState {
     STATE_REVOLUTION,
     STATE_DOWNLOADS,
     STATE_PERKINS,
+    STATE_HAPPY,
     // NOTE: STATE_SPLASH is NOT in the shuffle bag – triggered separately
     STATE_SPLASH
 };
@@ -312,5 +313,9 @@ void play_downloads(uint8_t *buffer, int frame_counter);
 // STATE_PERKINS
 void init_perkins();
 void play_perkins(uint8_t *buffer, int frame_counter);
+
+// STATE_HAPPY
+void init_happy();
+void play_happy(uint8_t *buffer, int frame_counter);
 
 #endif // COMMON_H

@@ -55,6 +55,7 @@ add_executable(mac_vga
     firmware/scenes/games/revolution.c
     firmware/scenes/visuals/downloads_slideshow.c
     firmware/scenes/visuals/perkins.c
+    firmware/scenes/visuals/happy.c
     firmware/hardware/bad_apple.s
     ${DOWNLOADS_GENERATED_SOURCE}
 )

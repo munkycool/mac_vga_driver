@@ -90,6 +90,8 @@ void init_screensaver(enum ProgramState state) {
         init_downloads();
     } else if (state == STATE_PERKINS) {
         init_perkins();
+    } else if (state == STATE_HAPPY) {
+        init_happy();
     } else if (state == STATE_SPLASH) {
         init_splash();
     }
@@ -316,6 +318,8 @@ int main() {
             play_downloads((uint8_t *)back_buffer, state_frame_counter);
         } else if (current_state == STATE_PERKINS) {
             play_perkins((uint8_t *)back_buffer, state_frame_counter);
+        } else if (current_state == STATE_HAPPY) {
+            play_happy((uint8_t *)back_buffer, state_frame_counter);
         } else if (current_state == STATE_SPLASH) {
             play_splash((uint8_t *)back_buffer, state_frame_counter);
         }
