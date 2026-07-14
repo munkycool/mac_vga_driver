@@ -30,6 +30,7 @@ SRCS = ../firmware/core/main.c \
        ../firmware/scenes/games/chan.c \
        ../firmware/scenes/games/revolution.c \
        ../firmware/scenes/visuals/perkins.c \
+       ../firmware/scenes/visuals/happy.c \
        ../firmware/scenes/visuals/downloads_slideshow.c \
        ../build/generated/downloads_slideshow/downloads_slideshow_assets.c \
        sdl_emulator.c

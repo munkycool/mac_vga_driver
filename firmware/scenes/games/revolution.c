@@ -28,6 +28,12 @@ static const char *TRANS_QUOTES[] = {
     "YOU NEVER REALLY\nHAVE YOUR RIGHTS\nUNTIL YOU ALL\nHAVE THEM.\n- M. P. JOHNSON"
 };
 
+static const char *PALESTINE_QUOTES[] = {
+    "OUR FREEDOM IS\nINCOMPLETE\nWITHOUT THE\nFREEDOM OF THE\nPALESTINIANS.\n- NELSON MANDELA",
+    "PALESTINE IS A\nCONSTITUENT PART\nOF THE GLOBAL\nSTRUGGLE FOR\nFREEDOM.\n- ANGELA DAVIS",
+    "THE STORY OF\nPALESTINE IS\nTHE STORY OF\nHUMANITY.\n- EDWARD SAID"
+};
+
 static int current_subpage = 0;
 static int quote_idx = 0;
 static char typed_quote[256];
@@ -35,7 +41,7 @@ static int typed_chars = 0;
 static int type_timer = 0;
 
 void init_revolution() {
-    current_subpage = get_rand() % 4;
+    current_subpage = get_rand() % 5;
     type_timer = 0;
     typed_chars = 0;
 
@@ -48,9 +54,12 @@ void init_revolution() {
     } else if (current_subpage == 2) {
         quote_idx = get_rand() % (sizeof(QUEER_QUOTES) / sizeof(QUEER_QUOTES[0]));
         snprintf(typed_quote, sizeof(typed_quote), "%s", QUEER_QUOTES[quote_idx]);
-    } else {
+    } else if (current_subpage == 3) {
         quote_idx = get_rand() % (sizeof(TRANS_QUOTES) / sizeof(TRANS_QUOTES[0]));
         snprintf(typed_quote, sizeof(typed_quote), "%s", TRANS_QUOTES[quote_idx]);
+    } else {
+        quote_idx = get_rand() % (sizeof(PALESTINE_QUOTES) / sizeof(PALESTINE_QUOTES[0]));
+        snprintf(typed_quote, sizeof(typed_quote), "%s", PALESTINE_QUOTES[quote_idx]);
     }
 }
 
@@ -198,6 +207,37 @@ static void draw_trans_symbol(uint8_t *buf, int cx, int cy) {
     draw_rect(buf, cx - 21, cy - 18, cx - 19, cy - 20, 5); // Pink crossbar
 }
 
+// Draw a peace dove carrying an olive branch
+static void draw_peace_dove(uint8_t *buf, int cx, int cy) {
+    // 1. Black silhouette background
+    draw_circle(buf, cx, cy, 18, 0);
+    draw_circle(buf, cx - 12, cy - 8, 12, 0);
+    draw_circle(buf, cx + 8, cy - 14, 10, 0);
+    draw_circle(buf, cx - 18, cy + 4, 8, 0);
+    
+    // 2. White dove pixels
+    draw_circle(buf, cx - 18, cy + 4, 5, 7);
+    draw_pixel(buf, cx - 20, cy + 3, 0);
+    draw_rect(buf, cx - 25, cy + 4, cx - 22, cy + 5, 3);
+    draw_circle(buf, cx, cy, 12, 7);
+    
+    for (int i = 0; i < 12; i++) {
+        draw_rect(buf, cx - 10 + i, cy - 15 + i/2, cx - 8 + i, cy - 2, 7);
+        draw_rect(buf, cx + i, cy - 18 + i/2, cx + 2 + i, cy - 5, 7);
+    }
+    
+    for (int i = 0; i < 8; i++) {
+        draw_pixel(buf, cx + 12 + i, cy + 2 - i/2, 7);
+        draw_pixel(buf, cx + 12 + i, cy + 4 - i/2, 7);
+    }
+    
+    // Olive branch
+    draw_pixel(buf, cx - 26, cy + 6, 3);
+    draw_pixel(buf, cx - 28, cy + 7, 2);
+    draw_pixel(buf, cx - 27, cy + 5, 2);
+    draw_pixel(buf, cx - 25, cy + 8, 2);
+}
+
 void play_revolution(uint8_t *buf, int frame_counter) {
     // Clear screen
     clear_screen(buf);
@@ -297,7 +337,7 @@ void play_revolution(uint8_t *buf, int frame_counter) {
         draw_string(buf, "QUEER LIBERATION", 160, 30, 1, 5);
         draw_string(buf, "STONEWALL RIOTS", 160, 42, 1, 7);
         draw_string(buf, "NO COMPROMISE", 160, 52, 1, 6);
-    } else {
+    } else if (current_subpage == 3) {
         // --- 4. TRANS LIBERATION ---
         // Waving trans pride stripes in background (Light Blue, Pink, White, Pink, Light Blue)
         for (int y = 0; y < 240; y += 4) {
@@ -324,6 +364,39 @@ void play_revolution(uint8_t *buf, int frame_counter) {
         draw_string(buf, "TRANS LIBERATION", 160, 30, 1, 6);
         draw_string(buf, "S.T.A.R. FOUNDED 1970", 160, 42, 1, 7);
         draw_string(buf, "SYLVIA & MARSHA", 160, 52, 1, 5);
+    } else {
+        // --- 5. PALESTINE-ISRAEL ---
+        // Waving Palestinian flag in background
+        for (int y = 0; y < 240; y += 4) {
+            for (int x = 0; x < 320; x += 4) {
+                // Wave distortion
+                float wave = sinf((float)x * 0.02f - (float)frame_counter * 0.1f) * 8.0f;
+                int ry = y + (int)wave;
+                if (ry < 0 || ry >= 240) continue;
+
+                uint8_t color;
+                int apex_x = 80;
+                int dist_from_mid = abs(ry - 120);
+                if (x < apex_x - (dist_from_mid * apex_x) / 120) {
+                    color = 1; // Red
+                } else {
+                    int stripe = ry / 80;
+                    if (stripe == 0) color = 0;      // Black
+                    else if (stripe == 1) color = 7; // White
+                    else color = 2;                  // Green
+                }
+
+                art_dither_pixel(buf, x, ry, color, 2);
+            }
+        }
+
+        // Peace Dove Symbol
+        draw_peace_dove(buf, 80, 110);
+
+        // Header
+        draw_string(buf, "PALESTINE-ISRAEL", 160, 30, 1, 3); // Yellow
+        draw_string(buf, "PEACE & FREEDOM", 160, 42, 1, 7);  // White
+        draw_string(buf, "JUSTICE FOR ALL", 160, 52, 1, 2);  // Green
     }
 
     // --- 4. RENDER TYPEWRITER QUOTE AT BOTTOM ---
@@ -337,6 +410,7 @@ void play_revolution(uint8_t *buf, int frame_counter) {
     else if (current_subpage == 1) text_color = 7; // White
     else if (current_subpage == 2) text_color = 6; // Cyan
     else if (current_subpage == 3) text_color = 5; // Pink
+    else if (current_subpage == 4) text_color = 2; // Green
 
     for (int i = 0; i < typed_chars; i++) {
         char c = typed_quote[i];
