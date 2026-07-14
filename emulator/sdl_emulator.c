@@ -12,7 +12,7 @@
 // Forward declarations from common.h — we don't include common.h here to avoid
 // type conflicts on bad_apple_bin (array vs pointer).
 typedef struct {
-    bool up, down, left, right, action1, action2, skip, interactive;
+    bool up, down, left, right, action1, action2, skip, back, interactive;
     int timeout_ticks;
 } InputState;
 extern volatile InputState global_input;
@@ -129,10 +129,13 @@ static void handle_key_down(SDL_Keycode sym, bool is_repeat) {
         case SDLK_q:
             queue_char('q');
             break;
+        case SDLK_e:
+            queue_char('e');
+            break;
         case SDLK_ESCAPE:
-            // Escape = skip to next screensaver. Queue exactly one 'q' so
+            // Escape = skip to next screensaver. Queue exactly one 'e' so
             // decay_skip = 1 (fires once, not 8 times).
-            queue_char('q');
+            queue_char('e');
             break;
         default:
             break;
@@ -212,6 +215,7 @@ void tight_loop_contents(void) {
 //   to non-interactive if no direction/action keys are currently active.
 extern void __real_update_input(void);
 static int skip_suppress_frames = 0;
+static int back_suppress_frames = 0;
 
 void __wrap_update_input(void) {
     __real_update_input();
@@ -225,6 +229,13 @@ void __wrap_update_input(void) {
         skip_suppress_frames = 8;   // decay_skip starts at 8 in common.c
     }
 
+    if (back_suppress_frames > 0) {
+        global_input.back = false;
+        back_suppress_frames--;
+    } else if (global_input.back) {
+        back_suppress_frames = 8;
+    }
+
     // If no direction or action key is actively held (all decays have expired),
     // snap back to non-interactive so screensaver scenes keep animating even
     // after the user briefly presses a key.
@@ -232,7 +243,7 @@ void __wrap_update_input(void) {
         !global_input.up && !global_input.down &&
         !global_input.left && !global_input.right &&
         !global_input.action1 && !global_input.action2 &&
-        !global_input.skip) {
+        !global_input.skip && !global_input.back) {
         global_input.interactive = false;
         global_input.timeout_ticks = 0;
     }

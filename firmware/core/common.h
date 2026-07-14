@@ -94,6 +94,7 @@ typedef struct {
     bool action1;
     bool action2;
     bool skip;
+    bool back;
     bool interactive;
     int timeout_ticks;
 } InputState;

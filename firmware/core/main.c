@@ -154,6 +154,49 @@ void dma_handler() {
     memset(buf, val_bp, 48);
 }
 
+#define STATE_HISTORY_SIZE 64
+static enum ProgramState state_history[STATE_HISTORY_SIZE];
+static int state_history_count = 0;
+static int state_history_index = -1;
+
+static void push_state_history(enum ProgramState state) {
+    if (state_history_index >= 0 && state_history_index < state_history_count - 1) {
+        state_history_count = state_history_index + 1;
+    }
+    if (state_history_index >= 0 && state_history[state_history_index] == state) {
+        return;
+    }
+    if (state_history_count < STATE_HISTORY_SIZE) {
+        state_history[state_history_count] = state;
+        state_history_index = state_history_count;
+        state_history_count++;
+    } else {
+        for (int i = 1; i < STATE_HISTORY_SIZE; i++) {
+            state_history[i - 1] = state_history[i];
+        }
+        state_history[STATE_HISTORY_SIZE - 1] = state;
+        state_history_index = STATE_HISTORY_SIZE - 1;
+    }
+}
+
+static enum ProgramState go_back_state(enum ProgramState current) {
+    if (state_history_index > 0) {
+        state_history_index--;
+        return state_history[state_history_index];
+    }
+    return current;
+}
+
+static enum ProgramState go_forward_state(enum ProgramState current) {
+    if (state_history_index >= 0 && state_history_index < state_history_count - 1) {
+        state_history_index++;
+        return state_history[state_history_index];
+    }
+    enum ProgramState next = pick_next_state(current);
+    push_state_history(next);
+    return next;
+}
+
 // Master execution block [10]
 int main() {
     set_sys_clock_khz(151200, true);
@@ -220,6 +263,7 @@ int main() {
         init_screensaver(current_state);
     } else {
         current_state = pick_next_state((enum ProgramState)-1);
+        push_state_history(current_state);
         init_screensaver(current_state);
     }
     
@@ -348,19 +392,25 @@ int main() {
             state_frame_counter++;
             if (state_frame_counter >= 200) { // ~3 seconds at 67Hz
                 current_state = pick_next_state((enum ProgramState)-1);
+                push_state_history(current_state);
                 init_screensaver(current_state);
                 state_frame_counter = 0;
             }
         } else if (global_input.interactive && global_input.skip) {
-            current_state = pick_next_state(current_state);
+            current_state = go_forward_state(current_state);
             init_screensaver(current_state);
             state_frame_counter = 0;
             global_input.skip = false;
+        } else if (global_input.interactive && global_input.back) {
+            current_state = go_back_state(current_state);
+            init_screensaver(current_state);
+            state_frame_counter = 0;
+            global_input.back = false;
         } else if (!global_input.interactive) {
             state_frame_counter++;
             if (state_frame_counter >= TIMEOUT_FRAMES) {
                 // Pick a completely random next state (No consecutive duplicates) [10]
-                current_state = pick_next_state(current_state);
+                current_state = go_forward_state(current_state);
                 init_screensaver(current_state);
                 state_frame_counter = 0;
             }
