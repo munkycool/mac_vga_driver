@@ -92,6 +92,12 @@ void init_screensaver(enum ProgramState state) {
         init_perkins();
     } else if (state == STATE_HAPPY) {
         init_happy();
+    } else if (state == STATE_HAPPY_BD) {
+        init_happy_bd();
+    } else if (state == STATE_HAPPY_MDD) {
+        init_happy_mdd();
+    } else if (state == STATE_HAPPY_OCD) {
+        init_happy_ocd();
     } else if (state == STATE_SPLASH) {
         init_splash();
     }
@@ -364,6 +370,12 @@ int main() {
             play_perkins((uint8_t *)back_buffer, state_frame_counter);
         } else if (current_state == STATE_HAPPY) {
             play_happy((uint8_t *)back_buffer, state_frame_counter);
+        } else if (current_state == STATE_HAPPY_BD) {
+            play_happy_bd((uint8_t *)back_buffer, state_frame_counter);
+        } else if (current_state == STATE_HAPPY_MDD) {
+            play_happy_mdd((uint8_t *)back_buffer, state_frame_counter);
+        } else if (current_state == STATE_HAPPY_OCD) {
+            play_happy_ocd((uint8_t *)back_buffer, state_frame_counter);
         } else if (current_state == STATE_SPLASH) {
             play_splash((uint8_t *)back_buffer, state_frame_counter);
         }
