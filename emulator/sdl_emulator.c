@@ -195,12 +195,21 @@ void tight_loop_contents(void) {
 }
 
 // --- update_input() wrapper (--wrap linker flag) ---
-// common.c sets decay_skip = 8, meaning global_input.skip stays true for 8
-// consecutive frames after one 'q' keypress.  On the Pico that's fine because
-// the main loop only acts on the FIRST true->false edge:
-//   global_input.skip = false;   // in main.c after pick_next_state
-// but update_input re-raises it next frame from the leftover decay.
-// We suppress frames 2-8 of the skip signal here without touching common.c.
+//
+// Problem 1: decay_skip = 8 in common.c → one 'q' keeps skip=true for 8 frames
+//   → 8 state changes per keypress.  Suppressed here.
+//
+// Problem 2: pressing any key sets global_input.interactive = true, which
+//   prevents state_frame_counter from incrementing in main.c (see the
+//   "else if (!global_input.interactive)" branch).  On the Pico this is
+//   intentional — it stops the 20-second auto-advance while the user is playing
+//   a game.  But in the emulator it causes all frame-animated scenes (synthwave,
+//   city skyline, etc.) to freeze at frame 0 after any keypress, because the
+//   new scene is entered while interactive=true and frame_counter never advances.
+//
+//   Fix: after a skip is processed, immediately clear interactive mode and reset
+//   the timeout so the new scene starts animating straight away.  Also snap back
+//   to non-interactive if no direction/action keys are currently active.
 extern void __real_update_input(void);
 static int skip_suppress_frames = 0;
 
@@ -213,7 +222,23 @@ void __wrap_update_input(void) {
         skip_suppress_frames--;
     } else if (global_input.skip) {
         // First frame where skip is true: allow it, then suppress the rest.
+        // Also reset interactive mode immediately so the *incoming* new scene
+        // has its frame_counter running from frame 0.
         skip_suppress_frames = 8;   // decay_skip starts at 8 in common.c
+        global_input.interactive = false;
+        global_input.timeout_ticks = 0;
+    }
+
+    // If no direction or action key is actively held (all decays have expired),
+    // snap back to non-interactive so screensaver scenes keep animating even
+    // after the user briefly presses a key.
+    if (global_input.interactive &&
+        !global_input.up && !global_input.down &&
+        !global_input.left && !global_input.right &&
+        !global_input.action1 && !global_input.action2 &&
+        !global_input.skip) {
+        global_input.interactive = false;
+        global_input.timeout_ticks = 0;
     }
 }
 
