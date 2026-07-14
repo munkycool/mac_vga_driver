@@ -1,6 +1,6 @@
 CC = gcc
 CFLAGS = -Wall -Wextra -O2 -Istubs -I.. `sdl2-config --cflags` -Dmain=main_app
-LDFLAGS = `sdl2-config --libs` -lm
+LDFLAGS = `sdl2-config --libs` -lm -Wl,--wrap,update_input
 
 SRCS = ../main.c \
        ../common.c \

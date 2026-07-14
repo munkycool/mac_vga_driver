@@ -9,12 +9,23 @@
 #include "hardware/dma.h"
 #include "hardware/irq.h"
 
+// Forward declarations from common.h — we don't include common.h here to avoid
+// type conflicts on bad_apple_bin (array vs pointer).
+typedef struct {
+    bool up, down, left, right, action1, action2, skip, interactive;
+    int timeout_ticks;
+} InputState;
+extern volatile InputState global_input;
+
 // --- Global variables defined in stub headers or required by the screensaver ---
 dma_hw_t dma_hw_inst = {0};
 const pio_program_t vga_program = {0};
 
-uint8_t *bad_apple_bin = NULL;
-uint8_t *bad_apple_bin_end = NULL;
+// bad_apple_bin is declared as const uint8_t[] in common.h;
+// we store dynamically-loaded data behind a pointer cast.
+static uint8_t *bad_apple_data = NULL;
+const uint8_t *bad_apple_bin = NULL;
+const uint8_t *bad_apple_bin_end = NULL;
 
 // --- Framebuffers and DMA variables from main.c ---
 extern uint8_t framebuffer_A[320 * 240];
@@ -183,6 +194,29 @@ void tight_loop_contents(void) {
     }
 }
 
+// --- update_input() wrapper (--wrap linker flag) ---
+// common.c sets decay_skip = 8, meaning global_input.skip stays true for 8
+// consecutive frames after one 'q' keypress.  On the Pico that's fine because
+// the main loop only acts on the FIRST true->false edge:
+//   global_input.skip = false;   // in main.c after pick_next_state
+// but update_input re-raises it next frame from the leftover decay.
+// We suppress frames 2-8 of the skip signal here without touching common.c.
+extern void __real_update_input(void);
+static int skip_suppress_frames = 0;
+
+void __wrap_update_input(void) {
+    __real_update_input();
+
+    if (skip_suppress_frames > 0) {
+        // Decay is still counting; force skip false so main.c ignores it.
+        global_input.skip = false;
+        skip_suppress_frames--;
+    } else if (global_input.skip) {
+        // First frame where skip is true: allow it, then suppress the rest.
+        skip_suppress_frames = 8;   // decay_skip starts at 8 in common.c
+    }
+}
+
 // Load bad_apple.bin from disk
 static void load_bad_apple() {
     FILE *f = fopen("bad_apple.bin", "rb");
@@ -191,22 +225,23 @@ static void load_bad_apple() {
     }
     if (!f) {
         printf("Info: bad_apple.bin not found, video state will be blank/static.\n");
-        // Allocate empty placeholder array to prevent segfaults
-        bad_apple_bin = calloc(1536 * 100, 1);
-        bad_apple_bin_end = bad_apple_bin + (1536 * 100);
+        bad_apple_data = calloc(1536 * 100, 1);
+        bad_apple_bin = bad_apple_data;
+        bad_apple_bin_end = bad_apple_data + (1536 * 100);
         return;
     }
     fseek(f, 0, SEEK_END);
     long size = ftell(f);
     fseek(f, 0, SEEK_SET);
-    bad_apple_bin = malloc(size);
-    if (!bad_apple_bin) {
+    bad_apple_data = malloc(size);
+    if (!bad_apple_data) {
         printf("Error: failed to allocate memory for bad_apple.bin\n");
         fclose(f);
         exit(1);
     }
-    size_t read_bytes = fread(bad_apple_bin, 1, size, f);
-    bad_apple_bin_end = bad_apple_bin + read_bytes;
+    size_t read_bytes = fread(bad_apple_data, 1, size, f);
+    bad_apple_bin = bad_apple_data;
+    bad_apple_bin_end = bad_apple_data + read_bytes;
     fclose(f);
     printf("Loaded bad_apple.bin successfully (%ld bytes).\n", (long)read_bytes);
 }
