@@ -2235,3 +2235,116 @@ void play_pride(uint8_t *buf, int frame) {
     else if (flag_type == 2) draw_string(buf, "GAY PRIDE", 130, 200, 1, 3);
     else draw_string(buf, "QUEER PRIDE", 120, 200, 1, 5);
 }
+
+// ============================================================================
+//  STATE 32: Microsoft Xbox Pride Flag Mashup
+// ============================================================================
+void init_xbox_pride() {}
+
+void play_xbox_pride(uint8_t *buf, int frame) {
+    // 1. Draw a beautiful dark space background with neon grid lines and stars
+    for (int y = 0; y < 240; y++) {
+        uint8_t bg_col = (y % 16 == 0) ? 4 : 0; // blue lines
+        for (int x = 0; x < 320; x++) {
+            draw_pixel(buf, x, y, bg_col);
+        }
+    }
+    
+    // Draw a synthwave perspective grid on the floor
+    for (int x = 0; x < 320; x += 30) {
+        for (int y = 180; y < 240; y++) {
+            int px = 160 + ((x - 160) * (y - 150)) / 30;
+            if (px >= 0 && px < 320) {
+                draw_pixel(buf, px, y, 6); // cyan grid
+            }
+        }
+    }
+    int grid_scroll = (frame / 2) % 12;
+    for (int y = 180 + grid_scroll; y < 240; y += 12) {
+        draw_rect(buf, 0, y, 319, y, 6);
+    }
+    
+    draw_stars(buf, frame);
+
+    // 2. Draw Xbox Pride logo sphere (pulse effect)
+    int pulse = (int)(4.0f * sinf((float)frame * 0.08f));
+    int radius = 55 + pulse;
+    int cx = 160;
+    int cy = 110;
+
+    // Draw solid black circular outline
+    draw_circle(buf, cx, cy, radius + 2, 0);
+    draw_circle(buf, cx, cy, radius + 1, 0);
+
+    for (int y = cy - radius; y <= cy + radius; y++) {
+        for (int x = cx - radius; x <= cx + radius; x++) {
+            int dx = x - cx;
+            int dy = y - cy;
+            int dist2 = dx*dx + dy*dy;
+            if (dist2 <= radius*radius) {
+                // Check if we are inside the colored segments (four quadrants)
+                bool in_top = (dy < -6) && (abs(dx) < -dy * 0.75f);
+                bool in_bottom = (dy > 6) && (abs(dx) < dy * 0.65f);
+                bool in_left = (dx < -6) && (abs(dy) < -dx * 0.85f);
+                bool in_right = (dx > 6) && (abs(dy) < dx * 0.85f);
+
+                if (in_top || in_bottom || in_left || in_right) {
+                    int stripe = (y - (cy - radius)) * 14 / (radius * 2);
+                    uint8_t col = 7;
+                    switch (stripe % 8) {
+                        case 0: col = 1; break; // Red
+                        case 1: col = 3; break; // Yellow
+                        case 2: col = 2; break; // Green
+                        case 3: col = 6; break; // Cyan
+                        case 4: col = 4; break; // Blue
+                        case 5: col = 5; break; // Magenta
+                        case 6: col = 7; break; // White
+                        case 7: col = 1; break; // Red/orange
+                    }
+                    
+                    // Add 3D shading based on sphere surface normals
+                    int shade = (dx * -3 + dy * -3) / (radius / 3);
+                    int bayer = art_bayer4_at(x, y);
+                    if (shade < -4 && bayer < 4) {
+                        col = 0; // shadow edge
+                    } else if (shade < -2 && bayer < 8) {
+                        if (col == 7) col = 6;
+                        else if (col == 3) col = 2;
+                        else col = 0;
+                    } else if (shade > 4 && bayer < 6) {
+                        col = 7; // white specular highlight
+                    }
+
+                    draw_pixel(buf, x, y, col);
+                } else {
+                    // Inner "X" groove (Glossy white/silver/grey button casing)
+                    int shade = (dx * -2 + dy * -2) / (radius / 4);
+                    uint8_t gcol = 7; // Silver base
+                    if (shade < -2) gcol = 6; // Cyan shadow
+                    if (shade < -4) gcol = 0; // Black groove depth
+                    draw_pixel(buf, x, y, gcol);
+                }
+            }
+        }
+    }
+
+    // 3. Neon green/cyan outer glow around the Xbox sphere
+    for (int r = radius + 3; r < radius + 8; r++) {
+        for (int angle = 0; angle < 360; angle += 3) {
+            float rad = (float)angle * 3.14159f / 180.0f;
+            int px = cx + (int)(cosf(rad) * (float)r);
+            int py = cy + (int)(sinf(rad) * (float)r);
+            if (px >= 0 && px < 320 && py >= 0 && py < 240) {
+                int dist_edge = r - radius;
+                int bayer = art_bayer4_at(px, py);
+                if (bayer > dist_edge * 3) {
+                    draw_pixel(buf, px, py, 6); // glowing cyan halo
+                }
+            }
+        }
+    }
+
+    // Title / overlay text
+    draw_string(buf, "XBOX PRIDE MASHUP", 100, 195, 1, 3);
+    draw_string(buf, "34 PRIDE FLAGS INCLUDED", 75, 207, 1, 7);
+}

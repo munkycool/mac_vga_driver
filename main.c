@@ -16,8 +16,8 @@ void dma_handler();
 
 // RESTORED: Squeaky-clean game maps and timers setup [10]
 void init_screensaver(enum ProgramState state) {
-    if (state == STATE_VIDEO) {
-        init_mario_movie();
+    if (state == STATE_XBOX_PRIDE) {
+        init_xbox_pride();
     } else if (state == STATE_BAD_APPLE) {
         init_bad_apple();
     } else if (state == STATE_BOUNCING_BOX) {
@@ -217,7 +217,7 @@ int main() {
     while(1) {
         update_input();
         // --- 1. RENDER PHASE ---
-        if (current_state == STATE_VIDEO || current_state == STATE_BAD_APPLE) {
+        if (current_state == STATE_BAD_APPLE) {
             play_video((uint8_t *)back_buffer);
             
         } else if (current_state == STATE_BOUNCING_BOX) {
@@ -294,6 +294,8 @@ int main() {
             play_pinup((uint8_t *)back_buffer, state_frame_counter);
         } else if (current_state == STATE_PRIDE) {
             play_pride((uint8_t *)back_buffer, state_frame_counter);
+        } else if (current_state == STATE_XBOX_PRIDE) {
+            play_xbox_pride((uint8_t *)back_buffer, state_frame_counter);
         } else if (current_state == STATE_SPLASH) {
             play_splash((uint8_t *)back_buffer, state_frame_counter);
         }
@@ -310,7 +312,7 @@ int main() {
         back_buffer = temp;
         
         // --- 4. STEP STATE PHYSICS & SCHEDULER ---
-        if (current_state == STATE_VIDEO || current_state == STATE_BAD_APPLE) {
+        if (current_state == STATE_BAD_APPLE) {
             tick_video();
         } else if (current_state == STATE_BOUNCING_BOX) {
             tick_bouncing_box();

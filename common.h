@@ -31,7 +31,7 @@
 #define NUM_STATES 32
 #define SPLASH_PROB 3  // 1-in-SPLASH_PROB chance of boot splash
 enum ProgramState {
-    STATE_VIDEO,
+    STATE_XBOX_PRIDE,
     STATE_BAD_APPLE,
     STATE_BOUNCING_BOX,
     STATE_PONG,
@@ -91,8 +91,6 @@ extern volatile InputState global_input;
 void update_input();
 
 // --- External Assembly Symbols ---
-extern const uint8_t mario_movie_bin[];
-extern const uint8_t mario_movie_bin_end[];
 extern const uint8_t bad_apple_bin[];
 extern const uint8_t bad_apple_bin_end[];
 
@@ -147,8 +145,11 @@ void draw_pro_mario(uint8_t *buffer, int x, int y);
 
 // --- State/Screensaver Functions ---
 
-// STATE_VIDEO & STATE_BAD_APPLE
-void init_mario_movie();
+// STATE_XBOX_PRIDE
+void init_xbox_pride();
+void play_xbox_pride(uint8_t *buffer, int frame);
+
+// STATE_BAD_APPLE
 void init_bad_apple();
 void play_video(uint8_t *buffer);
 void tick_video();

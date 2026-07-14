@@ -34,7 +34,6 @@ add_executable(mac_vga
     deltarune.c
     splash.c
     mario_show.c
-    mario_movie.s
     bad_apple.s
 )
 
