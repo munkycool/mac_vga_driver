@@ -6,5 +6,5 @@
 .global bad_apple_bin_end
 
 bad_apple_bin:
-.incbin "bad_apple.bin"
+.incbin "../../bad_apple.bin"
 bad_apple_bin_end:

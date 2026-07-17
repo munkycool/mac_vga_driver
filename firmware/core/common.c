@@ -79,7 +79,13 @@ static int state_bag_index = NUM_STATES; // Trigger initial shuffle
 
 static void shuffle_state_bag() {
     for (int i = 0; i < NUM_STATES; i++) {
-        state_bag[i] = (enum ProgramState)i;
+        enum ProgramState s = (enum ProgramState)i;
+        // Temporarily disable Minecraft from random rotation
+        if (s == STATE_MINECRAFT) {
+            state_bag[i] = STATE_SYNTHWAVE; // Replace with a safe state
+        } else {
+            state_bag[i] = s;
+        }
     }
     // Fisher-Yates shuffle
     for (int i = NUM_STATES - 1; i > 0; i--) {
@@ -341,6 +347,7 @@ volatile InputState global_input = {
     .skip = false,
     .back = false,
     .interactive = false,
+    .menu = false,
     .timeout_ticks = 0
 };
 
@@ -352,6 +359,7 @@ static int decay_action1 = 0;
 static int decay_action2 = 0;
 static int decay_skip = 0;
 static int decay_back = 0;
+static int decay_menu = 0;
 
 static int escape_state = 0;
 
@@ -373,6 +381,7 @@ void update_input() {
                 else if (c == 'x' || c == 'X' || c == 'c' || c == 'C') decay_action2 = 8;
                 else if (c == 'q' || c == 'Q') decay_back = 8;
                 else if (c == 'e' || c == 'E') decay_skip = 8;
+                else if (c == 'm' || c == 'M') decay_menu = 8;
             }
         } else if (escape_state == 1) {
             if (c == '[') {
@@ -397,6 +406,7 @@ void update_input() {
     if (decay_action2 > 0) { global_input.action2 = true; decay_action2--; } else { global_input.action2 = false; }
     if (decay_skip > 0) { global_input.skip = true; decay_skip--; } else { global_input.skip = false; }
     if (decay_back > 0) { global_input.back = true; decay_back--; } else { global_input.back = false; }
+    if (decay_menu > 0) { global_input.menu = true; decay_menu--; } else { global_input.menu = false; }
 
     if (global_input.interactive) {
         global_input.timeout_ticks++;

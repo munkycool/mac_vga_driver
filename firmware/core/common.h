@@ -33,8 +33,8 @@
 #define DOWNLOADS_FRAME_BYTES (DOWNLOADS_FRAME_WIDTH * DOWNLOADS_FRAME_HEIGHT)
 
 // --- Deterministic State Machine ---
-#define NUM_STATES 43
-#define SPLASH_PROB 3  // 1-in-SPLASH_PROB chance of boot splash
+#define NUM_STATES 47
+#define SPLASH_PROB  3  // 1-in-SPLASH_PROB chance of boot splash
 enum ProgramState {
     STATE_XBOX_PRIDE,
     STATE_BAD_APPLE,
@@ -78,7 +78,11 @@ enum ProgramState {
     STATE_HAPPY_MDD,
     STATE_HAPPY_OCD,
     STATE_HAPPY_MANIA,
+    STATE_HAPPY_MANIA_SUNRISE,
+    STATE_HAPPY_MANIA_CLOUDS,
+    STATE_HAPPY_MANIA_GEMS,
     STATE_HAPPY_PSYCHOSIS,
+    STATE_CELESTE,
     // NOTE: STATE_SPLASH is NOT in the shuffle bag – triggered separately
     STATE_SPLASH
 };
@@ -101,6 +105,7 @@ typedef struct {
     bool skip;
     bool back;
     bool interactive;
+    bool menu;
     int timeout_ticks;
 } InputState;
 
@@ -340,8 +345,24 @@ void play_happy_ocd(uint8_t *buffer, int frame_counter);
 void init_happy_mania();
 void play_happy_mania(uint8_t *buffer, int frame_counter);
 
+// STATE_HAPPY_MANIA_SUNRISE
+void init_happy_mania_sunrise();
+void play_happy_mania_sunrise(uint8_t *buffer, int frame_counter);
+
+// STATE_HAPPY_MANIA_CLOUDS
+void init_happy_mania_clouds();
+void play_happy_mania_clouds(uint8_t *buffer, int frame_counter);
+
+// STATE_HAPPY_MANIA_GEMS
+void init_happy_mania_gems();
+void play_happy_mania_gems(uint8_t *buffer, int frame_counter);
+
 // STATE_HAPPY_PSYCHOSIS
 void init_happy_psychosis();
 void play_happy_psychosis(uint8_t *buffer, int frame_counter);
+
+// STATE_CELESTE
+void init_celeste();
+void play_celeste(uint8_t *buffer, int frame_counter);
 
 #endif // COMMON_H

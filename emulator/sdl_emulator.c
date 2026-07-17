@@ -133,9 +133,7 @@ static void handle_key_down(SDL_Keycode sym, bool is_repeat) {
             queue_char('e');
             break;
         case SDLK_ESCAPE:
-            // Escape = skip to next screensaver. Queue exactly one 'e' so
-            // decay_skip = 1 (fires once, not 8 times).
-            queue_char('e');
+            queue_char('m');
             break;
         default:
             break;

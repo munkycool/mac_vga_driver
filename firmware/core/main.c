@@ -80,8 +80,10 @@ void init_screensaver(enum ProgramState state) {
         init_pinup();
     } else if (state == STATE_PRIDE) {
         init_pride();
+    /*
     } else if (state == STATE_MINECRAFT) {
         init_minecraft();
+    */
     } else if (state == STATE_CHAN) {
         init_chan();
     } else if (state == STATE_REVOLUTION) {
@@ -100,8 +102,16 @@ void init_screensaver(enum ProgramState state) {
         init_happy_ocd();
     } else if (state == STATE_HAPPY_MANIA) {
         init_happy_mania();
+    } else if (state == STATE_HAPPY_MANIA_SUNRISE) {
+        init_happy_mania_sunrise();
+    } else if (state == STATE_HAPPY_MANIA_CLOUDS) {
+        init_happy_mania_clouds();
+    } else if (state == STATE_HAPPY_MANIA_GEMS) {
+        init_happy_mania_gems();
     } else if (state == STATE_HAPPY_PSYCHOSIS) {
         init_happy_psychosis();
+    } else if (state == STATE_CELESTE) {
+        init_celeste();
     } else if (state == STATE_SPLASH) {
         init_splash();
     }
@@ -266,12 +276,52 @@ int main() {
     
     dma_channel_start(dma_chan_a);
     
-    // Force boot directly into Minecraft for testing
-    enum ProgramState current_state = STATE_MINECRAFT;
+    // Force boot directly into something else for testing (Minecraft disabled)
+    enum ProgramState current_state = STATE_SYNTHWAVE;
     init_screensaver(current_state);
     
     int state_frame_counter = 0;
+    int scene_timeout_counter = 0;
     const int TIMEOUT_FRAMES = 1334; // 1334 frames = Exactly 20.0 seconds at 66.7Hz [10]
+
+#ifdef EMULATOR
+    (void)scene_timeout_counter;
+    (void)TIMEOUT_FRAMES;
+#endif
+
+    // Scene Selector Menu State Variables
+    bool show_menu = false;
+    bool prev_menu_button = false;
+    int selected_scene_idx = 0;
+    bool prev_up = false;
+    bool prev_down = false;
+    bool prev_action1 = false;
+    
+    const char *menu_scenes[] = {
+        "Celeste Classic 1-1",
+        "Bad Apple Video",
+        "Pong",
+        "Tetris",
+        "Pacman",
+        "Donkey Kong",
+        "Mario NES",
+        "Metroid",
+        "Synthwave Rider",
+        "Quotes Screen"
+    };
+    const enum ProgramState menu_states[] = {
+        STATE_CELESTE,
+        STATE_BAD_APPLE,
+        STATE_PONG,
+        STATE_TETRIS,
+        STATE_PACMAN,
+        STATE_DONKEY_KONG,
+        STATE_MARIO_NES,
+        STATE_METROID,
+        STATE_SYNTHWAVE,
+        STATE_QUOTES
+    };
+    const int MENU_SCENE_COUNT = 10;
     
     while(1) {
         update_input();
@@ -355,16 +405,6 @@ int main() {
             play_pride((uint8_t *)back_buffer, state_frame_counter);
         } else if (current_state == STATE_XBOX_PRIDE) {
             play_xbox_pride((uint8_t *)back_buffer, state_frame_counter);
-        } else if (current_state == STATE_MINECRAFT) {
-            play_minecraft((uint8_t *)back_buffer, state_frame_counter);
-        } else if (current_state == STATE_CHAN) {
-            play_chan((uint8_t *)back_buffer, state_frame_counter);
-        } else if (current_state == STATE_REVOLUTION) {
-            play_revolution((uint8_t *)back_buffer, state_frame_counter);
-        } else if (current_state == STATE_DOWNLOADS) {
-            play_downloads((uint8_t *)back_buffer, state_frame_counter);
-        } else if (current_state == STATE_PERKINS) {
-            play_perkins((uint8_t *)back_buffer, state_frame_counter);
         } else if (current_state == STATE_HAPPY) {
             play_happy((uint8_t *)back_buffer, state_frame_counter);
         } else if (current_state == STATE_HAPPY_BD) {
@@ -375,10 +415,72 @@ int main() {
             play_happy_ocd((uint8_t *)back_buffer, state_frame_counter);
         } else if (current_state == STATE_HAPPY_MANIA) {
             play_happy_mania((uint8_t *)back_buffer, state_frame_counter);
+        } else if (current_state == STATE_HAPPY_MANIA_SUNRISE) {
+            play_happy_mania_sunrise((uint8_t *)back_buffer, state_frame_counter);
+        } else if (current_state == STATE_HAPPY_MANIA_CLOUDS) {
+            play_happy_mania_clouds((uint8_t *)back_buffer, state_frame_counter);
+        } else if (current_state == STATE_HAPPY_MANIA_GEMS) {
+            play_happy_mania_gems((uint8_t *)back_buffer, state_frame_counter);
         } else if (current_state == STATE_HAPPY_PSYCHOSIS) {
             play_happy_psychosis((uint8_t *)back_buffer, state_frame_counter);
+        } else if (current_state == STATE_CELESTE) {
+            play_celeste((uint8_t *)back_buffer, state_frame_counter);
         } else if (current_state == STATE_SPLASH) {
             play_splash((uint8_t *)back_buffer, state_frame_counter);
+        }
+        
+        // --- 1.5 MENU OVERLAY PROCESSING ---
+        if (global_input.menu && !prev_menu_button) {
+            show_menu = !show_menu;
+        }
+        prev_menu_button = global_input.menu;
+        
+        if (show_menu) {
+            bool press_up = global_input.up && !prev_up;
+            bool press_down = global_input.down && !prev_down;
+            bool press_action1 = global_input.action1 && !prev_action1;
+            
+            prev_up = global_input.up;
+            prev_down = global_input.down;
+            prev_action1 = global_input.action1;
+            
+            if (press_up) {
+                selected_scene_idx = (selected_scene_idx - 1 + MENU_SCENE_COUNT) % MENU_SCENE_COUNT;
+            }
+            if (press_down) {
+                selected_scene_idx = (selected_scene_idx + 1) % MENU_SCENE_COUNT;
+            }
+            if (press_action1) {
+                current_state = menu_states[selected_scene_idx];
+                init_screensaver(current_state);
+                show_menu = false;
+                state_frame_counter = 0;
+                scene_timeout_counter = 0;
+            }
+            
+            // Draw menu overlay on back_buffer
+            draw_rect((uint8_t *)back_buffer, 50, 35, 270, 205, 0); // Inner black box
+            draw_rect((uint8_t *)back_buffer, 48, 33, 49, 207, 7);
+            draw_rect((uint8_t *)back_buffer, 269, 33, 270, 207, 7);
+            draw_rect((uint8_t *)back_buffer, 48, 33, 270, 34, 7);
+            draw_rect((uint8_t *)back_buffer, 48, 206, 270, 207, 7);
+            
+            draw_string((uint8_t *)back_buffer, "SCENE SELECTOR", 85, 42, 2, 3);
+            draw_rect((uint8_t *)back_buffer, 55, 56, 263, 57, 7);
+            
+            for (int i = 0; i < MENU_SCENE_COUNT; i++) {
+                int item_y = 65 + i * 13;
+                if (i == selected_scene_idx) {
+                    draw_string((uint8_t *)back_buffer, ">", 65, item_y, 1, 2);
+                    draw_string((uint8_t *)back_buffer, menu_scenes[i], 80, item_y, 1, 2);
+                } else {
+                    draw_string((uint8_t *)back_buffer, menu_scenes[i], 80, item_y, 1, 7);
+                }
+            }
+        } else {
+            prev_up = global_input.up;
+            prev_down = global_input.down;
+            prev_action1 = global_input.action1;
         }
         
         // --- 2. VSYNC WAIT ---
@@ -393,40 +495,50 @@ int main() {
         back_buffer = temp;
         
         // --- 4. STEP STATE PHYSICS & SCHEDULER ---
-        if (current_state == STATE_BAD_APPLE) {
-            tick_video();
-        } else if (current_state == STATE_BOUNCING_BOX) {
-            tick_bouncing_box();
+        if (!show_menu) {
+            if (current_state == STATE_BAD_APPLE) {
+                tick_video();
+            } else if (current_state == STATE_BOUNCING_BOX) {
+                tick_bouncing_box();
+            }
+            state_frame_counter++;
         }
         
         // Master timer to swap state after 20 seconds [10]
-        // Splash screen: always times out after ~3 seconds regardless of input mode
-        if (current_state == STATE_SPLASH) {
-            state_frame_counter++;
+        if (show_menu) {
+            scene_timeout_counter = 0;
+        } else if (current_state == STATE_SPLASH) {
             if (state_frame_counter >= 200) { // ~3 seconds at 67Hz
                 current_state = pick_next_state((enum ProgramState)-1);
                 push_state_history(current_state);
                 init_screensaver(current_state);
                 state_frame_counter = 0;
+                scene_timeout_counter = 0;
             }
         } else if (global_input.interactive && global_input.skip) {
             current_state = go_forward_state(current_state);
             init_screensaver(current_state);
             state_frame_counter = 0;
+            scene_timeout_counter = 0;
             global_input.skip = false;
         } else if (global_input.interactive && global_input.back) {
             current_state = go_back_state(current_state);
             init_screensaver(current_state);
             state_frame_counter = 0;
+            scene_timeout_counter = 0;
             global_input.back = false;
         } else if (!global_input.interactive) {
-            state_frame_counter++;
-            if (state_frame_counter >= TIMEOUT_FRAMES) {
-                // Pick a completely random next state (No consecutive duplicates) [10]
+#ifndef EMULATOR
+            scene_timeout_counter++;
+            if (scene_timeout_counter >= TIMEOUT_FRAMES) {
                 current_state = go_forward_state(current_state);
                 init_screensaver(current_state);
                 state_frame_counter = 0;
+                scene_timeout_counter = 0;
             }
+#endif
+        } else {
+            scene_timeout_counter = 0;
         }
     }
 }

@@ -14,13 +14,25 @@ set(DOWNLOADS_IMAGE_DIR "$ENV{HOME}/Downloads" CACHE PATH "Directory scanned for
 set(DOWNLOADS_GENERATED_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated/downloads_slideshow")
 set(DOWNLOADS_GENERATED_SOURCE "${DOWNLOADS_GENERATED_DIR}/downloads_slideshow_assets.c")
 
+file(GLOB DOWNLOADS_IMAGE_FILES CONFIGURE_DEPENDS
+    "${DOWNLOADS_IMAGE_DIR}/*.bmp" "${DOWNLOADS_IMAGE_DIR}/*.BMP"
+    "${DOWNLOADS_IMAGE_DIR}/*.gif" "${DOWNLOADS_IMAGE_DIR}/*.GIF"
+    "${DOWNLOADS_IMAGE_DIR}/*.jpeg" "${DOWNLOADS_IMAGE_DIR}/*.JPEG"
+    "${DOWNLOADS_IMAGE_DIR}/*.jpg" "${DOWNLOADS_IMAGE_DIR}/*.JPG"
+    "${DOWNLOADS_IMAGE_DIR}/*.png" "${DOWNLOADS_IMAGE_DIR}/*.PNG"
+    "${DOWNLOADS_IMAGE_DIR}/*.svg" "${DOWNLOADS_IMAGE_DIR}/*.SVG"
+    "${DOWNLOADS_IMAGE_DIR}/*.tif" "${DOWNLOADS_IMAGE_DIR}/*.TIF"
+    "${DOWNLOADS_IMAGE_DIR}/*.tiff" "${DOWNLOADS_IMAGE_DIR}/*.TIFF"
+    "${DOWNLOADS_IMAGE_DIR}/*.webp" "${DOWNLOADS_IMAGE_DIR}/*.WEBP"
+)
+
 add_custom_command(
     OUTPUT ${DOWNLOADS_GENERATED_SOURCE}
     COMMAND ${CMAKE_COMMAND} -E make_directory ${DOWNLOADS_GENERATED_DIR}
     COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_LIST_DIR}/tools/generate_downloads_slideshow.py
             --input-dir ${DOWNLOADS_IMAGE_DIR}
             --output-file ${DOWNLOADS_GENERATED_SOURCE}
-    DEPENDS ${CMAKE_CURRENT_LIST_DIR}/tools/generate_downloads_slideshow.py
+    DEPENDS ${CMAKE_CURRENT_LIST_DIR}/tools/generate_downloads_slideshow.py ${DOWNLOADS_IMAGE_FILES}
     COMMENT "Generating Downloads slideshow assets"
     VERBATIM
 )
@@ -37,6 +49,8 @@ add_executable(mac_vga
     firmware/scenes/games/donkey_kong.c
     firmware/scenes/games/mario_nes.c
     firmware/scenes/games/metroid.c
+    firmware/scenes/games/celeste.c
+    firmware/scenes/games/celeste_classic.c
     firmware/scenes/visuals/pixel_art.c
     firmware/scenes/visuals/quotes.c
     firmware/scenes/games/frogger.c

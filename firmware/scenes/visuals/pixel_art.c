@@ -179,45 +179,101 @@ static void draw_art_line(uint8_t *buf, int x0, int y0, int x1, int y1, uint8_t 
 static void draw_countach_palm(uint8_t *buf, int cx, int ground_y, int trunk_h,
                                int crown_size, int sway, bool right_side) {
     int lean_dir = right_side ? 1 : -1;
-    int trunk_w = trunk_h / 12 + 1;
+    int trunk_w = trunk_h / 10 + 1;
+    if (trunk_w < 1) trunk_w = 1;
+
+    // Draw trunk with segments and tapering
+    for (int i = 0; i < trunk_h; i++) {
+        float t = (float)i / (float)trunk_h;
+        int y = ground_y - i;
+        // Quadratic bend for a more natural look
+        int bend = (int)(t * t * 18.0f * lean_dir);
+        // Subtle wind sway on the trunk too
+        int wind = (int)(sinf(sway * 0.05f + i * 0.1f) * (t * 2.0f));
+        int x = cx + bend + wind;
+
+        int current_w = trunk_w - (i * trunk_w) / (trunk_h + 8);
+        if (current_w < 1) current_w = 1;
+
+        // Trunk body: Black (0)
+        draw_rect(buf, x - current_w, y, x + current_w, y, 0);
+        
+        // Bark texture/segments: use Yellow (3) for highlights instead of just Blue (4)
+        if (i % 5 == 0) {
+            draw_rect(buf, x - current_w, y, x + current_w, y, 4); // Blue segment base
+            draw_pixel(buf, x, y, 3); // Yellow knot detail
+        }
+        
+        // Highlights on the outside of the curve
+        if (right_side) {
+            draw_pixel(buf, x + current_w, y, 6); // Cyan edge
+        } else {
+            draw_pixel(buf, x - current_w, y, 6); // Cyan edge
+        }
+    }
+
+    int crown_cx = cx + (int)(18.0f * lean_dir);
     int crown_y = ground_y - trunk_h;
 
-    for (int i = 0; i < trunk_h; i++) {
-        int y = ground_y - i;
-        int bend = (i * i * lean_dir) / (trunk_h * 7 + 1);
-        int wobble = ((sway + i) % 5) - 2;
-        int x = cx + bend + wobble / 2;
+    // Coconuts (Red cluster)
+    draw_pixel(buf, crown_cx, crown_y + 1, 1);
+    draw_pixel(buf, crown_cx + 1, crown_y + 1, 1);
+    draw_pixel(buf, crown_cx, crown_y + 2, 5);
 
-        draw_rect(buf, x - trunk_w, y, x + trunk_w, y, 0);
-        if ((i & 1) == 0) {
-            draw_pixel(buf, x + trunk_w, y, 4);
+    // Draw 9 detailed, curved fronds (increased from 7)
+    for (int f = 0; f < 9; f++) {
+        // Spread fronds around the top
+        float base_angle = (float)f * (3.14159f * 2.0f / 9.0f);
+        // Shift angles so they aren't perfectly symmetrical
+        base_angle += (f % 3) * 0.15f;
+        
+        float sway_angle = sinf(sway * 0.05f + f) * 0.15f;
+        float angle = base_angle + sway_angle;
+        
+        int len = crown_size + 8 + (f % 5);
+        int last_x = crown_cx;
+        int last_y = crown_y;
+
+        for (int step = 1; step <= len; step++) {
+            float st = (float)step / (float)len;
+            // Fronds curve downwards more as they get longer
+            float spread = 1.2f + (float)(f % 3) * 0.1f;
+            int dx = (int)(cosf(angle) * step * spread);
+            // More dramatic downward curve
+            int dy = (int)(sinf(angle) * step + st * st * 15.0f);
+            
+            int px = crown_cx + dx;
+            int py = crown_y + dy;
+
+            if (px >= 0 && px < 320 && py >= 0 && py < 240) {
+                // Main spine: Green (2)
+                draw_art_line(buf, last_x, last_y, px, py, 2); 
+                
+                // Detailed leaflets
+                if (step % 2 == 0) {
+                    // Draw small perpendicular ticks for leaves
+                    int lx = px + (int)(sinf(angle) * 2.0f);
+                    int ly = py - (int)(cosf(angle) * 2.0f);
+                    draw_pixel(buf, lx, ly, 2);
+                    
+                    // Sun highlight on the upper part of the frond
+                    if (py < crown_y + 4) {
+                        draw_pixel(buf, px, py - 1, 6); // Cyan
+                    } else if (st < 0.5f) {
+                        draw_pixel(buf, px, py - 1, 3); // Yellow
+                    }
+                }
+            }
+            last_x = px;
+            last_y = py;
         }
+        // Little leaf tips: White (7)
+        draw_pixel(buf, last_x, last_y, 7);
     }
-
-    int crown_cx = cx + (trunk_h * lean_dir) / 8;
-    int crown_r = crown_size / 2 + 2;
-    draw_circle(buf, crown_cx, crown_y, crown_r, 2);
-    draw_circle(buf, crown_cx, crown_y, crown_r / 2 + 1, 0);
-    draw_circle(buf, crown_cx - 1, crown_y - 1, 1, 7);
-
-    static const int frond_dx[6] = {-1, -2, 0, 2, 1, 0};
-    static const int frond_dy[6] = {-1, -1, -2, -1, 0, 1};
-    for (int f = 0; f < 6; f++) {
-        int sway_x = ((sway + f * 7) % 5) - 2;
-        int sway_y = ((sway + f * 5) % 3) - 1;
-        int len = crown_size + 4 + (f & 1);
-        int tip_x = crown_cx + frond_dx[f] * len + sway_x;
-        int tip_y = crown_y + frond_dy[f] * len + sway_y;
-
-        draw_art_line(buf, crown_cx, crown_y, tip_x, tip_y, 2);
-        draw_art_line(buf, crown_cx, crown_y, tip_x + lean_dir, tip_y, 6);
-        draw_pixel(buf, tip_x, tip_y, 7);
-
-        if (f == 0 || f == 3) {
-            draw_art_line(buf, tip_x, tip_y, tip_x + lean_dir * 2, tip_y - 1, 2);
-            draw_art_line(buf, tip_x, tip_y, tip_x + lean_dir * 2, tip_y + 1, 2);
-        }
-    }
+    
+    // Crown center: use a small magenta nut
+    draw_circle(buf, crown_cx, crown_y, 2, 0);
+    draw_pixel(buf, crown_cx, crown_y, 5);
 }
 
 // ============================================================================
