@@ -391,7 +391,9 @@ void play_frogger(uint8_t *buffer, int frame_counter) {
         }
         if (scored) {
             frog_score += 200;
-            init_frogger();
+            frog_x = 160;
+            frog_y = LANE_Y0;
+            ai_timer = 0;
             return;
         } else {
             dead = true; // hit destination walls
@@ -400,7 +402,9 @@ void play_frogger(uint8_t *buffer, int frame_counter) {
 
     if (dead) {
         frog_score = (frog_score > 50) ? frog_score - 50 : 0;
-        init_frogger();
+        frog_x = 160;
+        frog_y = LANE_Y0;
+        ai_timer = 0;
         return;
     }
 
