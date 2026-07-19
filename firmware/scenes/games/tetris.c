@@ -162,7 +162,11 @@ int evaluate_grid(uint8_t grid[20][10]) {
         if (last != 1) col_transitions++; // Floor is solid (1)
     }
     
-    // Wells (calculated across all 10 columns)
+    // Track well depths to find the primary Tetris well
+    int deepest_well_idx = -1;
+    int deepest_well_depth = 0;
+    int well_depths[10] = {0};
+
     for (int x = 0; x < 10; x++) {
         int depth = 0;
         for (int y = 0; y < 20; y++) {
@@ -173,19 +177,37 @@ int evaluate_grid(uint8_t grid[20][10]) {
                     depth++;
                 } else {
                     if (depth > 0) {
-                        well_sum += (depth * (depth + 1)) / 2;
+                        if (depth > well_depths[x]) well_depths[x] = depth;
                         depth = 0;
                     }
                 }
             } else {
                 if (depth > 0) {
-                    well_sum += (depth * (depth + 1)) / 2;
+                    if (depth > well_depths[x]) well_depths[x] = depth;
                     depth = 0;
                 }
             }
         }
         if (depth > 0) {
-            well_sum += (depth * (depth + 1)) / 2;
+            if (depth > well_depths[x]) well_depths[x] = depth;
+        }
+        if (well_depths[x] > deepest_well_depth) {
+            deepest_well_depth = well_depths[x];
+            deepest_well_idx = x;
+        }
+    }
+
+    // Penalize all wells except the single deepest one (our Tetris well).
+    // The main well is rewarded up to depth 4.
+    for (int x = 0; x < 10; x++) {
+        if (x == deepest_well_idx) {
+            if (well_depths[x] > 4) {
+                well_sum += (well_depths[x] - 4) * 200; // Penalize going too deep
+            } else {
+                well_sum -= well_depths[x] * 150; // Reward building the Tetris well
+            }
+        } else {
+            well_sum += well_depths[x] * 300; // Penalize accidental/multiple wells
         }
     }
     
@@ -199,7 +221,7 @@ int evaluate_grid(uint8_t grid[20][10]) {
            - (760 * holes)
            - (18 * row_transitions)
            - (18 * col_transitions)
-           - (24 * well_sum)
+           - well_sum
            - (18 * bumpiness);
 }
 
@@ -324,14 +346,17 @@ void tetris_run_ai() {
                     int score2 = evaluate_grid(temp_grid2);
 
                     // Strongly reward Tetris (4-line clears)
-                    if (lines_cleared1 == 4) score2 += 8000;
-                    if (lines_cleared2 == 4) score2 += 8000;
+                    if (lines_cleared1 == 4) score2 += 16000;
+                    if (lines_cleared2 == 4) score2 += 16000;
                     
                     // Reward minor line clears proportionally to help keep board clean
                     int total_lines_cleared = lines_cleared1 + lines_cleared2;
                     if (total_lines_cleared > 0 && total_lines_cleared < 4) {
                         score2 += total_lines_cleared * 400;
                     }
+
+                    // Add a certain amount of human-like randomness (+/- 150 points)
+                    score2 += (get_rand() % 300) - 150;
 
                     if (score2 > best_score2) best_score2 = score2;
                 }
