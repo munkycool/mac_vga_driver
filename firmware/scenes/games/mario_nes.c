@@ -494,7 +494,7 @@ void play_mario_nes(uint8_t *buffer, int frame_counter) {
 
     // Draw Green Pipes (using the Flappy Bird style)
     int pipes_x[3] = {320, 460, 580};
-    int pipes_h[3] = {32, 48, 64};
+    int pipes_h[3] = {32, 48, 40};
     for (int i = 0; i < 3; i++) {
         int px = pipes_x[i] - camera_x;
         int py = 219 - pipes_h[i];
