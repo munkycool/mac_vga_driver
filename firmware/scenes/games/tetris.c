@@ -117,10 +117,11 @@ int evaluate_grid(uint8_t grid[20][10]) {
     int row_transitions = 0;
     int col_transitions = 0;
     int well_sum = 0;
-    int aggregate_height = 0;
     
     // Calculate heights of each column
     int heights[10] = {0};
+    int max_h = 0;
+    int aggregate_height = 0;
     for (int x = 0; x < 10; x++) {
         for (int y = 0; y < 20; y++) {
             if (grid[y][x] != 0) {
@@ -128,7 +129,10 @@ int evaluate_grid(uint8_t grid[20][10]) {
                 break;
             }
         }
-        aggregate_height += heights[x];
+        if (x < 9) {
+            aggregate_height += heights[x];
+            if (heights[x] > max_h) max_h = heights[x];
+        }
     }
     
     // Calculate holes
@@ -189,18 +193,32 @@ int evaluate_grid(uint8_t grid[20][10]) {
         }
     }
     
-    // Bumpiness (sum of absolute height differences between adjacent columns)
+    // Bumpiness (sum of absolute height differences between adjacent columns 0 to 8)
     int bumpiness = 0;
-    for (int x = 0; x < 9; x++) {
+    for (int x = 0; x < 8; x++) {
         bumpiness += abs(heights[x] - heights[x + 1]);
     }
 
-    return (-51 * aggregate_height)
+    // Height penalty adjustments to allow/encourage stacking for Tetris
+    int height_penalty;
+    if (max_h > 12) {
+        height_penalty = 50 * aggregate_height + 500 * (max_h - 12);
+    } else if (max_h < 4) {
+        height_penalty = 10 * aggregate_height + 100 * (4 - max_h);
+    } else {
+        height_penalty = 15 * aggregate_height;
+    }
+
+    // Heavy penalty for blocking the Tetris well (column 9)
+    int col9_penalty = heights[9] * 1000;
+
+    return -height_penalty
            - (760 * holes)
            - (18 * row_transitions)
            - (18 * col_transitions)
            - (24 * well_sum)
-           - (18 * bumpiness);
+           - (18 * bumpiness)
+           - col9_penalty;
 }
 
 void tetris_run_ai() {
@@ -323,13 +341,32 @@ void tetris_run_ai() {
                     // Evaluate temp_grid2
                     int score2 = evaluate_grid(temp_grid2);
 
+                    // Find max height of columns 0-8 on temp_grid2
+                    int max_h2 = 0;
+                    for (int x = 0; x < 9; x++) {
+                        int h = 0;
+                        for (int y = 0; y < 20; y++) {
+                            if (temp_grid2[y][x] != 0) {
+                                h = 20 - y;
+                                break;
+                            }
+                        }
+                        if (h > max_h2) max_h2 = h;
+                    }
+
                     // Strongly reward Tetris (4-line clears)
-                    if (lines_cleared1 == 4) score2 += 8000;
-                    if (lines_cleared2 == 4) score2 += 8000;
-                    // Reward any line clears proportionally (survival > purity)
+                    if (lines_cleared1 == 4) score2 += 12000;
+                    if (lines_cleared2 == 4) score2 += 12000;
+
+                    // Discourage minor clears unless we are high up and need to survive
                     int total_lines_cleared = lines_cleared1 + lines_cleared2;
-                    if (total_lines_cleared > 0 && total_lines_cleared < 4)
-                        score2 += total_lines_cleared * 200;
+                    if (total_lines_cleared > 0 && total_lines_cleared < 4) {
+                        if (max_h2 < 13) {
+                            score2 -= 4000; // Penalize non-Tetris clears to keep the well open
+                        } else {
+                            score2 += total_lines_cleared * 1000; // Survive!
+                        }
+                    }
 
                     if (score2 > best_score2) best_score2 = score2;
                 }
