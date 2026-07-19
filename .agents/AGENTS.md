@@ -24,6 +24,7 @@ Rules:
 - Deletion over addition. Boring over clever. Fewest files possible.
 - Shortest working diff wins, but only once you understand the problem. The smallest change in the wrong place isn't lazy, it's a second bug.
 - Question complex requests: "Do you actually need X, or does Y cover it?"
+- Ask or prompt the user for more context if it is needed to understand a bug or requirements.
 - Pick the edge-case-correct option when two stdlib approaches are the same size, lazy means less code, not the flimsier algorithm.
 - Mark deliberate simplifications that cut a real corner with a known ceiling (global lock, O(n²) scan, naive heuristic) with a `ponytail:` comment naming the ceiling and upgrade path.
 - Commit and push changes to the repository every time a change is successfully made.
