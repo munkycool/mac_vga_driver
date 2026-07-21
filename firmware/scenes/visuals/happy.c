@@ -835,9 +835,10 @@ void play_happy_psychosis(uint8_t *buf, int frame) {
         "YOU ARE HERE, RIGHT NOW.",
         "THIS MOMENT IS REAL.",
         "FEEL THE GROUND.",
-        "THE FOG WILL CLEAR.",
+        "THE FOG IS COMING.",
         "YOU ARE SAFE.",
-        "IT WILL PASS."
+        "IT WILL PASS.",
+        "YOU WILL DIE."
     };
     int quote_idx = (frame / 300) % 6;
     draw_string_centered_multiline(buf, PSY_QUOTES[quote_idx], 180, 185, 1, 7); // White text inside box
