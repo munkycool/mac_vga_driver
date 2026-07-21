@@ -1,7 +1,7 @@
-.PHONY: help all clean emulator run-emulator train-celeste
+.PHONY: help all clean emulator run-emulator train-celeste test
 
 help:
-	@echo "Available targets: all clean emulator run-emulator train-celeste"
+	@echo "Available targets: all clean emulator run-emulator train-celeste test"
 
 all:
 	mkdir -p build && cd build && cmake .. && make -j$(nproc)
@@ -9,7 +9,11 @@ all:
 clean:
 	rm -rf build
 	$(MAKE) -C emulator clean
+	$(MAKE) -C tests clean
 	rm -f *.o celeste_train
+
+test:
+	$(MAKE) -C tests test
 
 emulator:
 	$(MAKE) -C emulator

@@ -13,3 +13,4 @@ generated/
 *.map
 *.o
 emulator/mac_vga_emulator
+tests/obj/
